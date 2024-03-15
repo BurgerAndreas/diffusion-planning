@@ -2,13 +2,13 @@ import os
 import git
 import pdb
 
-PROJECT_PATH = os.path.dirname(
-    os.path.realpath(os.path.join(__file__, '..', '..')))
+PROJECT_PATH = os.path.dirname(os.path.realpath(os.path.join(__file__, "..", "..")))
+
 
 def get_repo(path=PROJECT_PATH, search_parent_directories=True):
-    repo = git.Repo(
-        path, search_parent_directories=search_parent_directories)
+    repo = git.Repo(path, search_parent_directories=search_parent_directories)
     return repo
+
 
 def get_git_rev(*args, **kwargs):
     try:
@@ -22,19 +22,22 @@ def get_git_rev(*args, **kwargs):
 
     return git_rev
 
+
 def git_diff(*args, **kwargs):
     repo = get_repo(*args, **kwargs)
     diff = repo.git.diff()
     return diff
 
+
 def save_git_diff(savepath, *args, **kwargs):
     diff = git_diff(*args, **kwargs)
-    with open(savepath, 'w') as f:
+    with open(savepath, "w") as f:
         f.write(diff)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     git_rev = get_git_rev()
     print(git_rev)
 
-    save_git_diff('diff_test.txt')
+    save_git_diff("diff_test.txt")

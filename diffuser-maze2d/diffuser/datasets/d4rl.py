@@ -10,23 +10,26 @@ from contextlib import (
     redirect_stdout,
 )
 
+
 @contextmanager
 def suppress_output():
     """
-        A context manager that redirects stdout and stderr to devnull
-        https://stackoverflow.com/a/52442331
+    A context manager that redirects stdout and stderr to devnull
+    https://stackoverflow.com/a/52442331
     """
-    with open(os.devnull, 'w') as fnull:
+    with open(os.devnull, "w") as fnull:
         with redirect_stderr(fnull) as err, redirect_stdout(fnull) as out:
             yield (err, out)
+
 
 with suppress_output():
     ## d4rl prints out a variety of warnings
     import d4rl
 
-#-----------------------------------------------------------------------------#
-#-------------------------------- general api --------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# -------------------------------- general api --------------------------------#
+# -----------------------------------------------------------------------------#
+
 
 def load_environment(name):
     if type(name) != str:
@@ -39,10 +42,11 @@ def load_environment(name):
     env.name = name
     return env
 
+
 def get_dataset(env):
     dataset = env.get_dataset()
 
-    if 'antmaze' in str(env).lower():
+    if "antmaze" in str(env).lower():
         ## the antmaze-v0 environments have a variety of bugs
         ## involving trajectory segmentation, so manually reset
         ## the terminal and timeout fields
@@ -51,6 +55,7 @@ def get_dataset(env):
         get_max_delta(dataset)
 
     return dataset
+
 
 def sequence_dataset(env, preprocess_fn):
     """
@@ -70,23 +75,24 @@ def sequence_dataset(env, preprocess_fn):
     dataset = get_dataset(env)
     dataset = preprocess_fn(dataset)
 
-    N = dataset['rewards'].shape[0]
+    N = dataset["rewards"].shape[0]
     data_ = collections.defaultdict(list)
 
     # The newer version of the dataset adds an explicit
     # timeouts field. Keep old method for backwards compatability.
-    use_timeouts = 'timeouts' in dataset
+    use_timeouts = "timeouts" in dataset
 
     episode_step = 0
     for i in range(N):
-        done_bool = bool(dataset['terminals'][i])
+        done_bool = bool(dataset["terminals"][i])
         if use_timeouts:
-            final_timestep = dataset['timeouts'][i]
+            final_timestep = dataset["timeouts"][i]
         else:
-            final_timestep = (episode_step == env._max_episode_steps - 1)
+            final_timestep = episode_step == env._max_episode_steps - 1
 
         for k in dataset:
-            if 'metadata' in k: continue
+            if "metadata" in k:
+                continue
             data_[k].append(dataset[k][i])
 
         if done_bool or final_timestep:
@@ -94,7 +100,7 @@ def sequence_dataset(env, preprocess_fn):
             episode_data = {}
             for k in data_:
                 episode_data[k] = np.array(data_[k])
-            if 'maze2d' in env.name:
+            if "maze2d" in env.name:
                 episode_data = process_maze2d_episode(episode_data)
             yield episode_data
             data_ = collections.defaultdict(list)
@@ -102,18 +108,19 @@ def sequence_dataset(env, preprocess_fn):
         episode_step += 1
 
 
-#-----------------------------------------------------------------------------#
-#-------------------------------- maze2d fixes -------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# -------------------------------- maze2d fixes -------------------------------#
+# -----------------------------------------------------------------------------#
+
 
 def process_maze2d_episode(episode):
-    '''
-        adds in `next_observations` field to episode
-    '''
-    assert 'next_observations' not in episode
-    length = len(episode['observations'])
-    next_observations = episode['observations'][1:].copy()
+    """
+    adds in `next_observations` field to episode
+    """
+    assert "next_observations" not in episode
+    length = len(episode["observations"])
+    next_observations = episode["observations"][1:].copy()
     for key, val in episode.items():
         episode[key] = val[:-1]
-    episode['next_observations'] = next_observations
+    episode["next_observations"] = next_observations
     return episode

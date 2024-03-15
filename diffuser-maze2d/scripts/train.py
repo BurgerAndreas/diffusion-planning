@@ -2,24 +2,29 @@ import diffuser.utils as utils
 import pdb
 
 
-#-----------------------------------------------------------------------------#
-#----------------------------------- setup -----------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# ----------------------------------- setup -----------------------------------#
+# -----------------------------------------------------------------------------#
+
 
 class Parser(utils.Parser):
-    dataset: str = 'maze2d-large-v1'
-    config: str = 'config.maze2d'
+    # maze2d_umaze_v1 maze2d_medium_v1 maze2d_large_v1
+    dataset: str = "maze2d-large-v1"
+    config: str = "config.maze2d"
 
-args = Parser().parse_args('diffusion')
+
+args = Parser().parse_args("diffusion")
 
 
-#-----------------------------------------------------------------------------#
-#---------------------------------- dataset ----------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# ---------------------------------- dataset ----------------------------------#
+# -----------------------------------------------------------------------------#
+
+print(f"Loading dataset {args.dataset} at {args.savepath}", end=" ", flush=True)
 
 dataset_config = utils.Config(
     args.loader,
-    savepath=(args.savepath, 'dataset_config.pkl'),
+    savepath=(args.savepath, "dataset_config.pkl"),
     env=args.dataset,
     horizon=args.horizon,
     normalizer=args.normalizer,
@@ -30,24 +35,25 @@ dataset_config = utils.Config(
 
 render_config = utils.Config(
     args.renderer,
-    savepath=(args.savepath, 'render_config.pkl'),
+    savepath=(args.savepath, "render_config.pkl"),
     env=args.dataset,
 )
 
 dataset = dataset_config()
 renderer = render_config()
 
+print(f"observation_dim: {dataset.observation_dim} | action_dim: {dataset.action_dim}", end=" ", flush=True)
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
 
 
-#-----------------------------------------------------------------------------#
-#------------------------------ model & trainer ------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# ------------------------------ model & trainer ------------------------------#
+# -----------------------------------------------------------------------------#
 
 model_config = utils.Config(
     args.model,
-    savepath=(args.savepath, 'model_config.pkl'),
+    savepath=(args.savepath, "model_config.pkl"),
     horizon=args.horizon,
     transition_dim=observation_dim + action_dim,
     cond_dim=observation_dim,
@@ -57,7 +63,7 @@ model_config = utils.Config(
 
 diffusion_config = utils.Config(
     args.diffusion,
-    savepath=(args.savepath, 'diffusion_config.pkl'),
+    savepath=(args.savepath, "diffusion_config.pkl"),
     horizon=args.horizon,
     observation_dim=observation_dim,
     action_dim=action_dim,
@@ -74,7 +80,7 @@ diffusion_config = utils.Config(
 
 trainer_config = utils.Config(
     utils.Trainer,
-    savepath=(args.savepath, 'trainer_config.pkl'),
+    savepath=(args.savepath, "trainer_config.pkl"),
     train_batch_size=args.batch_size,
     train_lr=args.learning_rate,
     gradient_accumulate_every=args.gradient_accumulate_every,
@@ -89,9 +95,9 @@ trainer_config = utils.Config(
     n_samples=args.n_samples,
 )
 
-#-----------------------------------------------------------------------------#
-#-------------------------------- instantiate --------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# -------------------------------- instantiate --------------------------------#
+# -----------------------------------------------------------------------------#
 
 model = model_config()
 
@@ -100,26 +106,25 @@ diffusion = diffusion_config(model)
 trainer = trainer_config(diffusion, dataset, renderer)
 
 
-#-----------------------------------------------------------------------------#
-#------------------------ test forward & backward pass -----------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# ------------------------ test forward & backward pass -----------------------#
+# -----------------------------------------------------------------------------#
 
 utils.report_parameters(model)
 
-print('Testing forward...', end=' ', flush=True)
+print("Testing forward...", end=" ", flush=True)
 batch = utils.batchify(dataset[0])
 loss, _ = diffusion.loss(*batch)
 loss.backward()
-print('✓')
+print("✓")
 
 
-#-----------------------------------------------------------------------------#
-#--------------------------------- main loop ---------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# --------------------------------- main loop ---------------------------------#
+# -----------------------------------------------------------------------------#
 
 n_epochs = int(args.n_train_steps // args.n_steps_per_epoch)
 
 for i in range(n_epochs):
-    print(f'Epoch {i} / {n_epochs} | {args.savepath}')
+    print(f"Epoch {i} / {n_epochs} | {args.savepath}")
     trainer.train(n_train_steps=args.n_steps_per_epoch)
-

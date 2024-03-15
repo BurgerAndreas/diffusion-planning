@@ -9,9 +9,10 @@ import pdb
 
 import diffuser.utils as utils
 
-#-----------------------------------------------------------------------------#
-#---------------------------------- modules ----------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# ---------------------------------- modules ----------------------------------#
+# -----------------------------------------------------------------------------#
+
 
 class SinusoidalPosEmb(nn.Module):
     def __init__(self, dim):
@@ -27,6 +28,7 @@ class SinusoidalPosEmb(nn.Module):
         emb = torch.cat((emb.sin(), emb.cos()), dim=-1)
         return emb
 
+
 class Downsample1d(nn.Module):
     def __init__(self, dim):
         super().__init__()
@@ -34,6 +36,7 @@ class Downsample1d(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
+
 
 class Upsample1d(nn.Module):
     def __init__(self, dim):
@@ -43,19 +46,22 @@ class Upsample1d(nn.Module):
     def forward(self, x):
         return self.conv(x)
 
+
 class Conv1dBlock(nn.Module):
-    '''
-        Conv1d --> GroupNorm --> Mish
-    '''
+    """
+    Conv1d --> GroupNorm --> Mish
+    """
 
     def __init__(self, inp_channels, out_channels, kernel_size, n_groups=8):
         super().__init__()
 
         self.block = nn.Sequential(
-            nn.Conv1d(inp_channels, out_channels, kernel_size, padding=kernel_size // 2),
-            Rearrange('batch channels horizon -> batch channels 1 horizon'),
+            nn.Conv1d(
+                inp_channels, out_channels, kernel_size, padding=kernel_size // 2
+            ),
+            Rearrange("batch channels horizon -> batch channels 1 horizon"),
             nn.GroupNorm(n_groups, out_channels),
-            Rearrange('batch channels 1 horizon -> batch channels horizon'),
+            Rearrange("batch channels 1 horizon -> batch channels horizon"),
             nn.Mish(),
         )
 
@@ -63,14 +69,16 @@ class Conv1dBlock(nn.Module):
         return self.block(x)
 
 
-#-----------------------------------------------------------------------------#
-#---------------------------------- sampling ---------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# ---------------------------------- sampling ---------------------------------#
+# -----------------------------------------------------------------------------#
+
 
 def extract(a, t, x_shape):
     b, *_ = t.shape
     out = a.gather(-1, t)
     return out.reshape(b, *((1,) * (len(x_shape) - 1)))
+
 
 def cosine_beta_schedule(timesteps, s=0.008, dtype=torch.float32):
     """
@@ -85,32 +93,37 @@ def cosine_beta_schedule(timesteps, s=0.008, dtype=torch.float32):
     betas_clipped = np.clip(betas, a_min=0, a_max=0.999)
     return torch.tensor(betas_clipped, dtype=dtype)
 
+
 def apply_conditioning(x, conditions, action_dim):
     for t, val in conditions.items():
         x[:, t, action_dim:] = val.clone()
     return x
 
 
-#-----------------------------------------------------------------------------#
-#---------------------------------- losses -----------------------------------#
-#-----------------------------------------------------------------------------#
+# -----------------------------------------------------------------------------#
+# ---------------------------------- losses -----------------------------------#
+# -----------------------------------------------------------------------------#
+
 
 class WeightedLoss(nn.Module):
 
     def __init__(self, weights, action_dim):
         super().__init__()
-        self.register_buffer('weights', weights)
+        self.register_buffer("weights", weights)
         self.action_dim = action_dim
 
     def forward(self, pred, targ):
-        '''
-            pred, targ : tensor
-                [ batch_size x horizon x transition_dim ]
-        '''
+        """
+        pred, targ : tensor
+            [ batch_size x horizon x transition_dim ]
+        """
         loss = self._loss(pred, targ)
         weighted_loss = (loss * self.weights).mean()
-        a0_loss = (loss[:, 0, :self.action_dim] / self.weights[0, :self.action_dim]).mean()
-        return weighted_loss, {'a0_loss': a0_loss}
+        a0_loss = (
+            loss[:, 0, : self.action_dim] / self.weights[0, : self.action_dim]
+        ).mean()
+        return weighted_loss, {"a0_loss": a0_loss}
+
 
 class ValueLoss(nn.Module):
     def __init__(self, *args):
@@ -122,44 +135,51 @@ class ValueLoss(nn.Module):
 
         if len(pred) > 1:
             corr = np.corrcoef(
-                utils.to_np(pred).squeeze(),
-                utils.to_np(targ).squeeze()
-            )[0,1]
+                utils.to_np(pred).squeeze(), utils.to_np(targ).squeeze()
+            )[0, 1]
         else:
             corr = np.NaN
 
         info = {
-            'mean_pred': pred.mean(), 'mean_targ': targ.mean(),
-            'min_pred': pred.min(), 'min_targ': targ.min(),
-            'max_pred': pred.max(), 'max_targ': targ.max(),
-            'corr': corr,
+            "mean_pred": pred.mean(),
+            "mean_targ": targ.mean(),
+            "min_pred": pred.min(),
+            "min_targ": targ.min(),
+            "max_pred": pred.max(),
+            "max_targ": targ.max(),
+            "corr": corr,
         }
 
         return loss, info
+
 
 class WeightedL1(WeightedLoss):
 
     def _loss(self, pred, targ):
         return torch.abs(pred - targ)
 
+
 class WeightedL2(WeightedLoss):
 
     def _loss(self, pred, targ):
-        return F.mse_loss(pred, targ, reduction='none')
+        return F.mse_loss(pred, targ, reduction="none")
+
 
 class ValueL1(ValueLoss):
 
     def _loss(self, pred, targ):
         return torch.abs(pred - targ)
 
+
 class ValueL2(ValueLoss):
 
     def _loss(self, pred, targ):
-        return F.mse_loss(pred, targ, reduction='none')
+        return F.mse_loss(pred, targ, reduction="none")
+
 
 Losses = {
-    'l1': WeightedL1,
-    'l2': WeightedL2,
-    'value_l1': ValueL1,
-    'value_l2': ValueL2,
+    "l1": WeightedL1,
+    "l2": WeightedL2,
+    "value_l1": ValueL1,
+    "value_l2": ValueL2,
 }

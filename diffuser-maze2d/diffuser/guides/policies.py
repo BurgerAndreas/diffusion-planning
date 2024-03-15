@@ -1,14 +1,17 @@
 from collections import namedtuple
+
 # import numpy as np
 import torch
 import einops
 import pdb
 
 import diffuser.utils as utils
+
 # from diffusion.datasets.preprocessing import get_policy_preprocess_fn
 
-Trajectories = namedtuple('Trajectories', 'actions observations')
+Trajectories = namedtuple("Trajectories", "actions observations")
 # GuidedTrajectories = namedtuple('GuidedTrajectories', 'actions observations value')
+
 
 class Policy:
 
@@ -26,18 +29,18 @@ class Policy:
         conditions = utils.apply_dict(
             self.normalizer.normalize,
             conditions,
-            'observations',
+            "observations",
         )
-        conditions = utils.to_torch(conditions, dtype=torch.float32, device='cuda:0')
+        conditions = utils.to_torch(conditions, dtype=torch.float32, device="cuda:0")
         conditions = utils.apply_dict(
             einops.repeat,
             conditions,
-            'd -> repeat d', repeat=batch_size,
+            "d -> repeat d",
+            repeat=batch_size,
         )
         return conditions
 
     def __call__(self, conditions, debug=False, batch_size=1):
-
 
         conditions = self._format_conditions(conditions, batch_size)
 
@@ -50,16 +53,16 @@ class Policy:
         sample = utils.to_np(sample)
 
         ## extract action [ batch_size x horizon x transition_dim ]
-        actions = sample[:, :, :self.action_dim]
-        actions = self.normalizer.unnormalize(actions, 'actions')
+        actions = sample[:, :, : self.action_dim]
+        actions = self.normalizer.unnormalize(actions, "actions")
         # actions = np.tanh(actions)
 
         ## extract first action
         action = actions[0, 0]
 
         # if debug:
-        normed_observations = sample[:, :, self.action_dim:]
-        observations = self.normalizer.unnormalize(normed_observations, 'observations')
+        normed_observations = sample[:, :, self.action_dim :]
+        observations = self.normalizer.unnormalize(normed_observations, "observations")
 
         # if deltas.shape[-1] < observation.shape[-1]:
         #     qvel_dim = observation.shape[-1] - deltas.shape[-1]

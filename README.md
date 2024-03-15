@@ -38,6 +38,12 @@ python scripts/train.py --config config.maze2d --dataset maze2d-large-v1
 python scripts/plan_maze2d.py --config config.maze2d --dataset maze2d-large-v1
 ```
 
+### Maze2d
+
+- Using the env: `diffuser-maze2d/scripts/plan_maze2d.py`
+- Loading the env from d4rl: `diffuser-maze2d/diffuser/datasets/d4rl.py`
+- Rendering, maze size: `diffuser-maze2d/diffuser/utils/rendering.py`
+
 ### Resources
 
 Maze2d

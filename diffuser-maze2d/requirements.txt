@@ -9,6 +9,7 @@ git+https://github.com/Farama-Foundation/d4rl@master#egg=d4rl
 scikit-image==0.17.2
 scikit-video==1.1.11
 gitpython
+black
 einops
 ffmpeg
 ffprobe

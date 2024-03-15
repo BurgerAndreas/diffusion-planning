@@ -3,7 +3,7 @@ import numpy as np
 from gym import utils
 from gym.envs.mujoco import mujoco_env
 
-'''
+"""
     qpos : 15
     qvel : 14
     0-2: root x, y, z
@@ -17,12 +17,12 @@ from gym.envs.mujoco import mujoco_env
     13 : back  R hip
     14 : back  R ankle
 
-'''
+"""
+
 
 class AntFullObsEnv(mujoco_env.MujocoEnv, utils.EzPickle):
     def __init__(self):
-        asset_path = os.path.join(
-            os.path.dirname(__file__), 'assets/ant.xml')
+        asset_path = os.path.join(os.path.dirname(__file__), "assets/ant.xml")
         mujoco_env.MujocoEnv.__init__(self, asset_path, 5)
         utils.EzPickle.__init__(self)
 
