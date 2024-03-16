@@ -1,9 +1,15 @@
-# diffusion-planning
-Planning in large domains with continuous diffusion and discrete planners - Andreas Burger, Jack Sun, Yifan Ruan
+# Planning in large domains with continuous diffusion and discrete planners
+Andreas Burger, Jack Sun, Yifan Ruan
 
 Go to `scripts/run_diffusion_planner.py`! (Work in progress)
 
 ### Installation
+
+First you need to install MuJoCo 2.0. \
+[Follow section 1 here!](https://www.chenshiyu.top/blog/2019/06/19/Tutorial-Installation-and-Configuration-of-MuJoCo-Gym-Baselines/) \
+See [the official instructions](https://github.com/openai/mujoco-py?tab=readme-ov-file#install-mujoco) for more infos.
+
+Set up the environment:
 ```bash
 conda env create -f environment.yml # this will partly fail, but it will create the environment
 conda activate diffuser
@@ -35,10 +41,17 @@ sudo update-alternatives --config gcc # select whatever gcc version you had befo
 
 ### Run
 
+Our diffusion planner:
+```bash
+python scripts/run_diffusion_planner.py
+```
+
 
 Original diffuser:
 ```bash
-python scripts/train.py --config config.maze2d --dataset maze2d-large-v1
+# training
+python scripts/train.py --config config.maze2d --dataset maze2d-large-v1 # ~20h on RTX 3060
+# inference
 python scripts/plan_maze2d.py --config config.maze2d --dataset maze2d-large-v1
 ```
 
@@ -57,8 +70,6 @@ Outside this repo
 
 ### Resources
 
-Maze2d
-
-Based on 
+This codebase is based on 
 - https://github.com/jannerm/diffuser/tree/maze2d
 - https://github.com/huggingface/diffusers/tree/main/examples/reinforcement_learning
