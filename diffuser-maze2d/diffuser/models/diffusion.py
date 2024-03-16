@@ -176,6 +176,7 @@ class GaussianDiffusion(nn.Module):
         if return_diffusion:
             diffusion = [x]
 
+        # denoise image
         progress = utils.Progress(self.n_timesteps) if verbose else utils.Silent()
         for i in reversed(range(0, self.n_timesteps)):
             timesteps = torch.full((batch_size,), i, device=device, dtype=torch.long)
@@ -209,6 +210,7 @@ class GaussianDiffusion(nn.Module):
     # ------------------------------------------ training ------------------------------------------#
 
     def q_sample(self, x_start, t, noise=None):
+        """Noise image. time 0 (noiseless) -> time t."""
         if noise is None:
             noise = torch.randn_like(x_start)
 
@@ -220,11 +222,14 @@ class GaussianDiffusion(nn.Module):
         return sample
 
     def p_losses(self, x_start, cond, t):
+        """Noise and denoise image."""
         noise = torch.randn_like(x_start)
 
+        # noise image
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
         x_noisy = apply_conditioning(x_noisy, cond, self.action_dim)
 
+        # denoise image
         x_recon = self.model(x_noisy, cond, t)
         x_recon = apply_conditioning(x_recon, cond, self.action_dim)
 
@@ -233,12 +238,15 @@ class GaussianDiffusion(nn.Module):
         if self.predict_epsilon:
             loss, info = self.loss_fn(x_recon, noise)
         else:
+            # predict sample directly
             loss, info = self.loss_fn(x_recon, x_start)
 
         return loss, info
 
     def loss(self, x, cond):
+        """Sample timestep, noise and denoise image."""
         batch_size = len(x)
+        # random timestep to noise image
         t = torch.randint(0, self.n_timesteps, (batch_size,), device=x.device).long()
         return self.p_losses(x, cond, t)
 

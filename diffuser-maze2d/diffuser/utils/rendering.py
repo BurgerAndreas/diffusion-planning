@@ -206,7 +206,7 @@ class MuJoCoRenderer:
         return composite
 
     def composite(self, savepath, paths, dim=(1024, 256), **kwargs):
-
+        """Render `paths`(trajectories, observations) and save as a single image to `savepath`"""
         render_kwargs = {
             "trackbodyid": 2,
             "distance": 10,
@@ -230,7 +230,7 @@ class MuJoCoRenderer:
 
         if savepath is not None:
             imageio.imsave(savepath, images)
-            print(f"Saved {len(paths)} samples to: {savepath}")
+            print(f"Saved {len(paths)} samples to: {savepath} | MuJoCoRenderer.composite")
 
         return images
 

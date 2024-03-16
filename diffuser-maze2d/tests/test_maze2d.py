@@ -1,6 +1,10 @@
 import diffuser.utils as utils
 import pdb
 
+"""
+Test the object shape and types in the diffuser-maze2d training loop, without training.
+Modified from diffuser-maze2d/scripts/train.py
+"""
 
 # -----------------------------------------------------------------------------#
 # ----------------------------------- setup -----------------------------------#
@@ -42,7 +46,6 @@ render_config = utils.Config(
 dataset = dataset_config()
 renderer = render_config()
 
-print(f"observation_dim: {dataset.observation_dim} | action_dim: {dataset.action_dim}", end=" ", flush=True)
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
 
@@ -123,14 +126,22 @@ print("✓")
 # --------------------------------- main loop ---------------------------------#
 # -----------------------------------------------------------------------------#
 
-n_epochs = int(args.n_train_steps // args.n_steps_per_epoch)
+print('model', type(model))
+print('args.batch_size', args.batch_size)
+print(f"observation_dim: {dataset.observation_dim} | action_dim: {dataset.action_dim}", end=" ", flush=True)
 
-timer = utils.Timer()
-for i in range(n_epochs):
-    print(f"Epoch {i} / {n_epochs} | {args.savepath}")
-    trainer.train(n_train_steps=args.n_steps_per_epoch)
+n_train_steps = 3
 
-# training finished
-print(
-    f"[ utils/training ] Training finished at step {trainer.step} after time {int(timer.time_passed_since_init() / 60)} minutes."
-)
+for step in range(n_train_steps):
+    for i in range(trainer.gradient_accumulate_every):
+        batch = next(trainer.dataloader)
+        batch = utils.batch_to_device(batch)
+
+        print('batch', type(batch))
+
+        x, cond = batch
+
+        print('x', type(x), x.shape)
+        print('cond', type(cond), cond.keys())
+
+        loss, infos = trainer.model.loss(*batch)

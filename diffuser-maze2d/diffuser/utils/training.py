@@ -116,7 +116,7 @@ class Trainer(object):
     # -----------------------------------------------------------------------------#
 
     def train(self, n_train_steps):
-
+        """Do one epoch of training."""
         timer = Timer()
         for step in range(n_train_steps):
             for i in range(self.gradient_accumulate_every):
@@ -144,6 +144,7 @@ class Trainer(object):
                 print(f"{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}")
 
             if self.step == 0 and self.sample_freq:
+                # render training trajectories
                 self.render_reference(self.n_reference)
 
             if self.sample_freq and self.step % self.sample_freq == 0:
@@ -151,10 +152,7 @@ class Trainer(object):
 
             self.step += 1
 
-        # training finished
-        print(
-            f"[ utils/training ] Training finished at step {self.step} after time {int(timer.time_passed_since_init() / 60)} minutes."
-        )
+        # epoch finished
 
     def save(self, epoch):
         """
@@ -189,7 +187,7 @@ class Trainer(object):
 
     def render_reference(self, batch_size=10):
         """
-        renders training points
+        renders training points (training trajectories = paths between random points in the maze)
         """
 
         ## get a temporary dataloader to load a single batch
@@ -207,7 +205,7 @@ class Trainer(object):
 
         ## get trajectories and condition at t=0 from batch
         trajectories = to_np(batch.trajectories)
-        # TODO conditioning not used?
+        # TODO conditioning not used in renderer?
         conditions = to_np(batch.conditions[0])[:, None]
 
         ## [ batch_size x horizon x observation_dim ]
@@ -277,4 +275,4 @@ class Trainer(object):
             ####
 
             savepath = os.path.join(self.logdir, f"sample-{self.step}-{i}.png")
-            self.renderer.composite(savepath, observations)
+            self.renderer.composite(savepath=savepath, paths=observations)

@@ -95,6 +95,7 @@ def cosine_beta_schedule(timesteps, s=0.008, dtype=torch.float32):
 
 
 def apply_conditioning(x, conditions, action_dim):
+    """Set 'pixel values' to conditioning values (constraints)."""
     for t, val in conditions.items():
         x[:, t, action_dim:] = val.clone()
     return x

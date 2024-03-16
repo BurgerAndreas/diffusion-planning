@@ -9,9 +9,14 @@ import diffuser.utils as utils
 
 
 class Parser(utils.Parser):
+    # maze2d_umaze_v1 maze2d_medium_v1 maze2d_large_v1
     dataset: str = "maze2d-umaze-v1"
     config: str = "config.maze2d"
 
+"""
+Perform inference. 
+First you need to train by calling diffuser-maze2d/scripts/train.py
+"""
 
 # ---------------------------------- setup ----------------------------------#
 
@@ -24,6 +29,7 @@ print(f"Loaded environment {args.dataset}: {env} (type: {type(env)})")
 
 # ---------------------------------- loading ----------------------------------#
 
+print('Loading diffusion model at', args.diffusion_loadpath, end=' ', flush=True)
 diffusion_experiment = utils.load_diffusion(
     args.logbase, args.dataset, args.diffusion_loadpath, epoch=args.diffusion_epoch
 )

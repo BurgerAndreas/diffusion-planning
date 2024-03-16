@@ -6,6 +6,8 @@ import pdb
 
 from collections import namedtuple
 
+from diffuser.utils.paths import ROOT_DIFFUSERS, ROOT_MAZE2D
+
 DiffusionExperiment = namedtuple(
     "Diffusion", "dataset renderer model diffusion ema trainer epoch"
 )
@@ -33,6 +35,11 @@ def get_latest_epoch(loadpath):
 
 def load_config(*loadpath):
     loadpath = os.path.join(*loadpath)
+    # if we are not calling the script from diffuser-maze2d, we need to add the root path
+    if not os.path.exists(loadpath):
+        loadpath = os.path.join(ROOT_MAZE2D, *loadpath)
+    if not os.path.exists(loadpath):
+        raise FileNotFoundError(f"loadpath {loadpath} does not exist")
     config = pickle.load(open(loadpath, "rb"))
     print(f"[ utils/serialization ] Loaded config from {loadpath}")
     print(config)

@@ -1,6 +1,7 @@
 # diffusion-planning
 Planning in large domains with continuous diffusion and discrete planners - Andreas Burger, Jack Sun, Yifan Ruan
 
+Go to `diffuser-maze2d/scripts/test_diffusion_planner.py`!
 
 ### Installation
 ```bash
@@ -19,21 +20,25 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 # https://github.com/openai/mujoco-py/issues/492#issuecomment-607688770
 sudo apt-get install patchelf
 sudo apt-get install libglu1-mesa-dev mesa-common-dev
-gcc --version
+# install old gcc version. Ideally gcc-7
+gcc --version # check your gcc version
 sudo apt-get install build-essential
 sudo apt install gcc-9 g++-9
 sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9
 sudo update-alternatives --config gcc # select gcc-9
 pip install mujoco_py==2.0.2.8
-sudo update-alternatives --config gcc # select whatever you had before
 pip install "cython<3"
+sudo update-alternatives --config gcc # select whatever gcc version you had before
 
 # ./scripts/download_pretrained.sh
 ```
 
 ### Run
 
+
+Original diffuser:
 ```bash
+cd diffuser-maze2d
 python scripts/train.py --config config.maze2d --dataset maze2d-large-v1
 python scripts/plan_maze2d.py --config config.maze2d --dataset maze2d-large-v1
 ```
