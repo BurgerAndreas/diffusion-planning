@@ -1,7 +1,7 @@
 # diffusion-planning
 Planning in large domains with continuous diffusion and discrete planners - Andreas Burger, Jack Sun, Yifan Ruan
 
-Go to `diffuser-maze2d/scripts/test_diffusion_planner.py`!
+Go to `scripts/run_diffusion_planner.py`! (Work in progress)
 
 ### Installation
 ```bash
@@ -38,21 +38,26 @@ sudo update-alternatives --config gcc # select whatever gcc version you had befo
 
 Original diffuser:
 ```bash
-cd diffuser-maze2d
 python scripts/train.py --config config.maze2d --dataset maze2d-large-v1
 python scripts/plan_maze2d.py --config config.maze2d --dataset maze2d-large-v1
 ```
 
 ### Maze2d
 
-- Using the env: `diffuser-maze2d/scripts/plan_maze2d.py`
-- Loading the env from d4rl: `diffuser-maze2d/diffuser/datasets/d4rl.py`
-- Rendering, maze size: `diffuser-maze2d/diffuser/utils/rendering.py`
+In this repo
+- Using the env: `scripts/plan_maze2d.py`
+- Loading the env from d4rl: `diffuser/datasets/d4rl.py`
+- Rendering, maze size: `diffuser/utils/rendering.py`
+
+Outside this repo
+- [Documentation](https://robotics.farama.org/envs/maze/point_maze/)
+- [MazeEnv source code](https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py)
+- [How to create your own point maze env](https://github.com/Farama-Foundation/Minari/blob/fa9b2e8ed4bad7f2010819709ce74f0400a4acac/docs/tutorials/dataset_creation/point_maze_dataset.py#L6)
+- [How dataset was created](https://github.com/Farama-Foundation/D4RL/blob/master/scripts/generation/generate_maze2d_datasets.py)
 
 ### Resources
 
 Maze2d
-- https://github.com/Farama-Foundation/Minari/blob/fa9b2e8ed4bad7f2010819709ce74f0400a4acac/docs/tutorials/dataset_creation/point_maze_dataset.py#L6
 
 Based on 
 - https://github.com/jannerm/diffuser/tree/maze2d
