@@ -3,13 +3,15 @@ logs/
 wandb/
 
 # allow for checkpoint
-!**/logs/maze2d-large-v1/diffusion/H384_T256/_sample_reference.png
-!**/logs/maze2d-large-v1/diffusion/H384_T256/args.json
-!**/logs/maze2d-large-v1/diffusion/H384_T256/dataset_config.pkl
-!**/logs/maze2d-large-v1/diffusion/H384_T256/diff.txt
-!**/logs/maze2d-large-v1/diffusion/H384_T256/diffusion_config.pkl
-!**/logs/maze2d-large-v1/diffusion/H384_T256/model_config.pkl
-!**/logs/maze2d-large-v1/diffusion/H384_T256/render_config.pkl
+!logs/maze2d-large-v1/diffusion/H384_T256/sample-reference.png
+!logs/maze2d-large-v1/diffusion/H384_T256/args.json
+!logs/maze2d-large-v1/diffusion/H384_T256/dataset_config.pkl
+!logs/maze2d-large-v1/diffusion/H384_T256/diff.txt
+!logs/maze2d-large-v1/diffusion/H384_T256/diffusion_config.pkl
+!logs/maze2d-large-v1/diffusion/H384_T256/model_config.pkl
+!logs/maze2d-large-v1/diffusion/H384_T256/render_config.pkl
+!logs/maze2d-large-v1/diffusion/H384_T256/trainer_config.pkl
+!logs/maze2d-large-v1/diffusion/H384_T256/state_19600000.pt
 
 fuse.cfg
 

@@ -1,0 +1,146 @@
+diff --git a/README.md b/README.md
+index ce7eeb2..20f02ed 100644
+--- a/README.md
++++ b/README.md
+@@ -53,6 +53,7 @@ python scripts/plan_maze2d.py --config config.maze2d --dataset maze2d-large-v1
+ 
+ Maze2d
+ - https://github.com/Farama-Foundation/Minari/blob/fa9b2e8ed4bad7f2010819709ce74f0400a4acac/docs/tutorials/dataset_creation/point_maze_dataset.py#L6
++- https://github.com/Farama-Foundation/D4RL/blob/master/scripts/generation/generate_maze2d_datasets.py
+ 
+ Based on 
+ - https://github.com/jannerm/diffuser/tree/maze2d
+diff --git a/diffuser-maze2d/diffuser/utils/serialization.py b/diffuser-maze2d/diffuser/utils/serialization.py
+index 7512b98..a79d6ff 100644
+--- a/diffuser-maze2d/diffuser/utils/serialization.py
++++ b/diffuser-maze2d/diffuser/utils/serialization.py
+@@ -37,8 +37,11 @@ def load_config(*loadpath):
+     loadpath = os.path.join(*loadpath)
+     # if we are not calling the script from diffuser-maze2d, we need to add the root path
+     if not os.path.exists(loadpath):
+-        loadpath = os.path.join(ROOT_MAZE2D, *loadpath)
++        # print(f'[ utils/serialization ] loadpath {loadpath} does not exist, trying to load from {ROOT_MAZE2D}')
++        loadpath = os.path.join(ROOT_MAZE2D, loadpath)
++        # print(f'{loadpath}')
+     if not os.path.exists(loadpath):
++        print(f'Found models {os.listdir(f"{ROOT_MAZE2D}/logs")}')
+         raise FileNotFoundError(f"loadpath {loadpath} does not exist")
+     config = pickle.load(open(loadpath, "rb"))
+     print(f"[ utils/serialization ] Loaded config from {loadpath}")
+diff --git a/diffuser-maze2d/diffuser/utils/training.py b/diffuser-maze2d/diffuser/utils/training.py
+index 01bce22..964f2c2 100644
+--- a/diffuser-maze2d/diffuser/utils/training.py
++++ b/diffuser-maze2d/diffuser/utils/training.py
+@@ -9,6 +9,7 @@ from .arrays import batch_to_device, to_np, to_device, apply_dict
+ from .timer import Timer
+ from .cloud import sync_logs
+ 
++from diffuser.utils.paths import ROOT_MAZE2D
+ 
+ def cycle(dl):
+     while True:
+@@ -175,6 +176,9 @@ class Trainer(object):
+         loads model and ema from disk
+         """
+         loadpath = os.path.join(self.logdir, f"state_{epoch}.pt")
++        if not os.path.exists(loadpath):
++            # print(f'[ utils/serialization ] loadpath {loadpath} does not exist, trying to load from {ROOT_MAZE2D}')
++            loadpath = os.path.join(ROOT_MAZE2D, loadpath)
+         data = torch.load(loadpath)
+ 
+         self.step = data["step"]
+diff --git a/diffuser-maze2d/scripts/test_diffusion_planner.py b/diffuser-maze2d/scripts/test_diffusion_planner.py
+index 4a0c810..14ccb3d 100644
+--- a/diffuser-maze2d/scripts/test_diffusion_planner.py
++++ b/diffuser-maze2d/scripts/test_diffusion_planner.py
+@@ -22,8 +22,8 @@ import diffuser.utils as utils
+ 
+ 
+ class Parser(utils.Parser):
+-    # maze2d_umaze_v1 maze2d_medium_v1 maze2d_large_v1
+-    dataset: str = "maze2d-umaze-v1"
++    # maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1
++    dataset: str = "maze2d-large-v1"
+     config: str = "config.maze2d"
+ 
+ # ---------------------------------- setup ----------------------------------#
+@@ -37,7 +37,7 @@ large_maze = None
+ 
+ # ---------------------------------- loading ----------------------------------#
+ 
+-print('Loading diffusion model at', args.diffusion_loadpath, end=' ', flush=True)
++print('Loading diffusion model at', args.diffusion_loadpath)
+ diffusion_experiment = utils.load_diffusion(
+     args.logbase, args.dataset, args.diffusion_loadpath, epoch=args.diffusion_epoch
+ )
+@@ -65,6 +65,9 @@ waypoints = {
+ 
+ # TODO(Andreas): how do we deal with waypoints that cross maze boundaries?
+ 
++for local_start, local_goal in zip(waypoints.values(), waypoints.values()):
++    print(f"local_start: {local_start} | local_goal: {local_goal}")
++
+ for local_start, local_goal in zip(waypoints.values(), waypoints.values()):
+     print(f"local_start: {local_start} | local_goal: {local_goal}")
+ 
+@@ -72,8 +75,10 @@ for local_start, local_goal in zip(waypoints.values(), waypoints.values()):
+     print(f"Loaded environment {args.dataset}: {small_maze} (type: {type(small_maze)})")
+ 
+     observation = small_maze.reset()
++    print(f"Initial observation: {observation}")
+ 
+     # TODO(Andreas): modify to take in waypoints from planner
++    print('args.conditional:', args.conditional)
+     if args.conditional:
+         print("Resetting target")
+         small_maze.set_target()
+@@ -83,6 +88,9 @@ for local_start, local_goal in zip(waypoints.values(), waypoints.values()):
+     cond = {
+         diffusion.horizon - 1: np.array([*target, 0, 0]),
+     }
++    print(f"target: {target} | cond: {cond}")
++
++    break
+ 
+     ## observations for rendering
+     rollout = [observation.copy()]
+diff --git a/diffuser-maze2d/tests/test_maze2d.py b/diffuser-maze2d/tests/test_maze2d.py
+index ef9d9f0..546d2b1 100644
+--- a/diffuser-maze2d/tests/test_maze2d.py
++++ b/diffuser-maze2d/tests/test_maze2d.py
+@@ -128,20 +128,24 @@ print("✓")
+ 
+ print('model', type(model))
+ print('args.batch_size', args.batch_size)
+-print(f"observation_dim: {dataset.observation_dim} | action_dim: {dataset.action_dim}", end=" ", flush=True)
++print(f"observation_dim: {dataset.observation_dim} | action_dim: {dataset.action_dim}")
+ 
+-n_train_steps = 3
++n_train_steps = 1
+ 
+ for step in range(n_train_steps):
+-    for i in range(trainer.gradient_accumulate_every):
+-        batch = next(trainer.dataloader)
+-        batch = utils.batch_to_device(batch)
++    batch = next(trainer.dataloader)
++    batch = utils.batch_to_device(batch)
+ 
+-        print('batch', type(batch))
++    print('batch', type(batch))
+ 
+-        x, cond = batch
+ 
+-        print('x', type(x), x.shape)
+-        print('cond', type(cond), cond.keys())
++    # x (batch_size, horizon, observation_dim+action_dim)
++    # e.g. [32, 384, 6]
++    # cond {timestep: [batch_size, observation_dim]}
++    x, cond = batch
++
++    print('x', type(x), x.shape)
++    print('cond', cond.keys(), '->', cond[list(cond.keys())[0]].shape)
++
++    loss, infos = trainer.model.loss(*batch)
+ 
+-        loss, infos = trainer.model.loss(*batch)
+\ No newline at end of file
