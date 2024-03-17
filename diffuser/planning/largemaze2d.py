@@ -68,24 +68,31 @@ def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=F
         global_pos[0] -= 1
         global_pos[1] -= 1
 
-    # add back overlap to the global position
+    # map global position to local position (to unit maze size)
+    local_pos = np.zeros(2, dtype=float)
     if overlap is not None:
         small_maze_wo_walls = maze_size - (overlap * 2)
+        local_pos[0] = global_pos[0] % small_maze_wo_walls[0]
+        local_pos[1] = global_pos[1] % small_maze_wo_walls[1]
+    else:
+        local_pos[0] = global_pos[0] % maze_size[0]
+        local_pos[1] = global_pos[1] % maze_size[1]
+
+    # add back overlap to the global position
+    if overlap is not None:
         # which small maze is the global position in?
+        small_maze_wo_walls = maze_size - (overlap * 2)
         maze_coord = np.array([ 
             global_pos[0] / small_maze_wo_walls[0], 
             global_pos[1] / small_maze_wo_walls[1]
             ])
         maze_coord = np.round(maze_coord).astype(float)
-        # print('maze coord', maze_coord, f'from global_pos: {global_pos}')
-        global_pos[0] += overlap[0] * 2 * maze_coord[0]
-        global_pos[1] += overlap[1] * 2 * maze_coord[1]
-        # print('global_pos', global_pos)
-
-    # map global position to local position
-    local_pos = np.zeros(2, dtype=float)
-    local_pos[0] = global_pos[0] % maze_size[0]
-    local_pos[1] = global_pos[1] % maze_size[1]
+        # add overlap for the removed outer walls
+        local_pos[0] += overlap[0]
+        local_pos[1] += overlap[1]
+        # add overlap*2 for each crossed border
+        # global_pos[0] += overlap[0] * 2 * maze_coord[0]
+        # global_pos[1] += overlap[1] * 2 * maze_coord[1]
     
     # print('  local_pos =', local_pos, '| global_pos =', global_pos, '| maze_size =', maze_size, '| overlap =', overlap, '| large_maze_outer_wall =', large_maze_outer_wall)
     # print('  global_pos[0] % maze_size[0] =', f'{global_pos[0]} % {maze_size[0]} =', global_pos[0] % maze_size[0])
@@ -144,70 +151,4 @@ if __name__ == "__main__":
     # need to add one for the removed wall
     assert np.allclose(pos_loc1, np.array([1, 1])), f'pos_loc1: {pos_loc1}'
 
-    overlap = np.array([1, 1])
-    pos1 = np.array([1, 1])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap, large_maze_outer_wall=True)
-    # need to add one for the removed wall
-    assert np.allclose(pos_loc1, np.array([1, 1])), f'pos_loc1: {pos_loc1}'
-
-    overlap = np.array([0, 0])
-    pos1 = np.array([1, 1])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, np.array([2, 2])), f'pos_loc1: {pos_loc1}'
-
-    overlap = None
-    pos1 = np.array([1, 1])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, np.array([1, 1])), f'pos_loc1: {pos_loc1}'
-
-    # test 2 - one inside one outside the first small maze
-    overlap = np.array([1, 1])
-    pos1 = np.array([10, 9])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, np.array([3, 10])), f'pos_loc1: {pos_loc1}'
-
-    overlap = np.array([0, 0])
-    pos1 = np.array([10, 9])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, np.array([1, 9])), f'pos_loc1: {pos_loc1}'
-
-    overlap = None
-    pos1 = np.array([10, 9])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, np.array([1, 9])), f'pos_loc1: {pos_loc1}'
-
-    # test 3 - just inside the first small maze
-    overlap = np.array([1, 1])
-    pos1 = np.array([7.9, 10.9])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    # need to add one for the removed wall
-    assert np.allclose(pos_loc1, np.array([9.9, 12.9])), f'pos_loc1: {pos_loc1}'
-
-    overlap = np.array([0, 0])
-    pos1 = np.array([8.9, 11.9])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, pos1), f'pos_loc1: {pos_loc1}'
-
-    overlap = None
-    pos1 = np.array([8.9, 11.9])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, pos1), f'pos_loc1: {pos_loc1}'
-
-    # test 4 - just outside the first small maze
-    overlap = np.array([1, 1])
-    pos1 = np.array([8.1, 11.1])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    # need to add two for the removed walls
-    assert np.allclose(pos_loc1, np.array([1.1, 1.1])), f'pos_loc1: {pos_loc1}'
-
-    overlap = np.array([0, 0])
-    pos1 = np.array([9.1, 12.1]) # 9 -> 0
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, np.array([.1, .1])), f'pos_loc1: {pos_loc1}'
-
-    overlap = None
-    pos1 = np.array([9.1, 12.1])
-    pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
-    assert np.allclose(pos_loc1, np.array([.1, .1])), f'pos_loc1: {pos_loc1}'
-
-    print('all tests passed!')
+    

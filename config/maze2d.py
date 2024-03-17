@@ -168,6 +168,8 @@ maze2d_large_v1 = {
 # ------------------------ diffusion_planner test overrides ------------------------#
 
 # overlap, outer wall
+# x: 0[1,8][8,15]16
+# y: 0[1,11][11,21]22
 maze2d_large_v1_test1 = {
     **maze2d_large_v1,
     "diffusion_planner": {
@@ -186,9 +188,9 @@ maze2d_large_v1_test1 = {
         "global_goal": np.array([14.5, 18.5], dtype=float),
         "waypoints": {
             "global_start": np.array([1.5, 1.5], dtype=float),
-            "waypoint1": np.array([7.9, 10.9]), # just at the border if overlap=[1,1]
-            "waypoint2": np.array([8.1, 11.1]),
-            "global_goal": np.array([14.5, 18.5], dtype=float),
+            "waypoint1": np.array([7.5, 10.5]), # just at the border if overlap=[1,1]
+            "waypoint2": np.array([8.5, 11.5]),
+            "global_goal": np.array([14.5, 20.5], dtype=float),
         },
     },
 }
@@ -226,9 +228,35 @@ maze2d_large_v1_test3 = {
         "large_maze_outer_wall": False,
         # if the small mazes should overlap when combined (i.e. their outer walls are removed)
         "overlap": np.array([1, 1]),
-        "remove_img_margins": None,
+        # "remove_img_margins": None,
         # "remove_img_margins": [int(500/9), int(500/12)], # slight border in between
-        # "remove_img_margins": [int(500/9)+1, int(500/12)+1],
+        "remove_img_margins": [int(500/9)+1, int(500/12)+1],
+        # desired trajectory
+        "global_start": np.array([.5, .5], dtype=float),
+        "global_goal": np.array([13.5, 19.5], dtype=float),
+        "waypoints": {
+            "global_start": np.array([1.5, 1.5], dtype=float),
+            "waypoint1": np.array([6.5, 9.5]), # just at the border
+            "waypoint2": np.array([7.5, 10.5]),
+            "global_goal": np.array([14.5, 18.5], dtype=float),
+        },
+    },
+}
+
+# overlap, no outer wall, 3x3 mazes
+maze2d_large_v1_test3 = {
+    **maze2d_large_v1,
+    "diffusion_planner": {
+        # how many smaller mazes to concatenate to create a larger maze
+        "n_maze_h": 3,
+        "n_maze_w": 3,
+        # if the large maze should have an outer wall
+        "large_maze_outer_wall": False,
+        # if the small mazes should overlap when combined (i.e. their outer walls are removed)
+        "overlap": np.array([1, 1]),
+        # "remove_img_margins": None,
+        # "remove_img_margins": [int(500/9), int(500/12)], # slight border in between
+        "remove_img_margins": [int(500/9)+1, int(500/12)+1],
         # desired trajectory
         "global_start": np.array([.5, .5], dtype=float),
         "global_goal": np.array([13.5, 19.5], dtype=float),

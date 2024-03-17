@@ -327,6 +327,7 @@ class MazeRenderer:
         self._background = self._config != " "
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
+        self._plot_obs = True
 
     def renders(self, observations, conditions=None, title=None):
         plt.clf()
@@ -342,8 +343,9 @@ class MazeRenderer:
 
         path_length = len(observations)
         colors = plt.cm.jet(np.linspace(0, 1, path_length))
-        plt.plot(observations[:, 1], observations[:, 0], c="black", zorder=10)
-        plt.scatter(observations[:, 1], observations[:, 0], c=colors, zorder=20)
+        if self._plot_obs:
+            plt.plot(observations[:, 1], observations[:, 0], c="black", zorder=10)
+            plt.scatter(observations[:, 1], observations[:, 0], c=colors, zorder=20)
         if conditions is not None:
             for val in conditions:
                 plt.scatter(val[1], val[0], marker="x", c="black", s=100, zorder=30)

@@ -28,7 +28,7 @@ class Parser(utils.Parser):
     # maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1
     config: str = "config.maze2d"
     # dataset: str = "maze2d-large-v1"
-    dataset: str = "maze2d-large-v1-test3"
+    dataset: str = "maze2d-large-v1-test1"
 
 # ---------------------------------- Extra arguments ----------------------------------#
 
@@ -97,12 +97,12 @@ print(f"waypoints: {waypoints}")
 # ---------------------------------- main loop diffusion ----------------------------------#
 
 # TODO(Andreas): how do we deal with planned trajectories that cross maze boundaries?
-# - sampe two waypoints right next to each other at the boundary, one in each maze
-# diffuser does not 'see' the walls. But all data it is trained from does not touch the walls.
+# Idea 1: sample two waypoints right next to each other at the boundary, one in each maze
+# diffuser does not 'see' the walls. But all data the diffuser is trained from avoids the walls.
 # i.e. just setting a waypoint on the boundary will be out of distribution and fail.
 # e.g. this is the closest to the wall the diffuser will every go: 
 # maze | pos: [ 0.99922423 10.19801523] | goal: [ 1 11]
-# Instead we could let the mazes overlap a bit, 
+# Idea 2: Instead we could let the mazes overlap a bit, 
 # so that a waypoint just inside the outer walls are actually at the boundary to the next maze
 
 if argsdp.overlapping_waypoint_pairs == True:
@@ -114,17 +114,21 @@ else:
 small_maze = datasets.load_environment(args.dataset)
 print(f"Loaded environment {args.dataset}: {small_maze} (type: {type(small_maze)})")
 
+# render the maze layout without any trajectory
+renderer._plot_obs = False
+dummy = np.array([[0,0,0,0], [0,0,0,0]]) + 1
 maze_img = renderer.composite(
     # array is dummy observation. Need to pass something to get the maze layout
-    join(args.savepath, "maze_layout.png"), [np.array([[0,0,0,0], [0,0,0,0]])], ncol=1
+    join(args.savepath, "maze_layout.png"), [dummy], ncol=1
 )
+renderer._plot_obs = True
 
 global_traj = []
 global_traj_renderings = []
 waypoint_list = list(waypoints.keys())
 for step in range(num_steps):
 
-    print(f"\nLocal traj {step} / num_steps")
+    print(f"\nLocal traj {step} of {num_steps}")
 
     if argsdp.overlapping_waypoint_pairs == True:
         local_start_idx, local_goal_idx = waypoint_list[step], waypoint_list[step + 1]
@@ -136,9 +140,13 @@ for step in range(num_steps):
     local_start_gc, local_goal_gc = waypoints[local_start_idx], waypoints[local_goal_idx]
 
     # convert global coordinates to local coordinates
+    print(f"start: {local_start_gc} | goal: {local_goal_gc} (global coords)")
     local_start = maps.global_to_local(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
     local_goal = maps.global_to_local(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-    print(f"local_start: {local_start} | local_goal: {local_goal}")
+    print(f"       {local_start} |       {local_goal} (local coords)")
+    coord_start = maps.get_maze_coord_from_global_pos(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+    coord_goal = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+    assert np.allclose(coord_start, coord_goal), f"start and goal should be in the same maze, but are {coord_start} and {coord_goal}"
 
     # reinstantiate the maze?
 
