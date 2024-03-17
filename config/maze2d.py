@@ -83,7 +83,7 @@ base = {
         "n_diffusion_steps": 256,
         "normalizer": "LimitsNormalizer",
         ## serialization
-        "vis_freq": 100,
+        "vis_freq": 500,
         "logbase": "logs",
         "prefix": "plans/release",
         "exp_name": watch(plan_args_to_watch),
@@ -93,7 +93,7 @@ base = {
         "diffusion_loadpath": "f:diffusion/H{horizon}_T{n_diffusion_steps}",
         "diffusion_epoch": "latest",
     },
-    # Added by Andreas
+    # Added for the diffusion planner
     "diffusion_planner": {
         # how many smaller mazes to concatenate to create a larger maze
         "n_maze_h": 2,
@@ -167,6 +167,7 @@ maze2d_large_v1 = {
 
 # ------------------------ diffusion_planner test overrides ------------------------#
 
+# overlap, outer wall
 maze2d_large_v1_test1 = {
     **maze2d_large_v1,
     "diffusion_planner": {
@@ -208,8 +209,33 @@ maze2d_large_v1_test2 = {
         "global_goal": np.array([17.5, 23.5], dtype=float),
         "waypoints": {
             "global_start": np.array([1.5, 1.5], dtype=float),
-            "waypoint1": np.array([8.9, 11.9]), # just at the border
-            "waypoint2": np.array([9.1, 12.1]),
+            "waypoint1": np.array([8.5, 11.5]), # just at the border
+            "waypoint2": np.array([9.5, 12.5]),
+            "global_goal": np.array([14.5, 18.5], dtype=float),
+        },
+    },
+}
+
+# overlap, but no outer wall
+# x: [0,7][7,14]
+# y: [0,10][10,20]
+maze2d_large_v1_test3 = {
+    **maze2d_large_v1,
+    "diffusion_planner": {
+        # if the large maze should have an outer wall
+        "large_maze_outer_wall": False,
+        # if the small mazes should overlap when combined (i.e. their outer walls are removed)
+        "overlap": np.array([1, 1]),
+        "remove_img_margins": None,
+        # "remove_img_margins": [int(500/9), int(500/12)], # slight border in between
+        # "remove_img_margins": [int(500/9)+1, int(500/12)+1],
+        # desired trajectory
+        "global_start": np.array([.5, .5], dtype=float),
+        "global_goal": np.array([13.5, 19.5], dtype=float),
+        "waypoints": {
+            "global_start": np.array([1.5, 1.5], dtype=float),
+            "waypoint1": np.array([6.5, 9.5]), # just at the border
+            "waypoint2": np.array([7.5, 10.5]),
             "global_goal": np.array([14.5, 18.5], dtype=float),
         },
     },

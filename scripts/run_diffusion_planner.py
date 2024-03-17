@@ -28,7 +28,7 @@ class Parser(utils.Parser):
     # maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1
     config: str = "config.maze2d"
     # dataset: str = "maze2d-large-v1"
-    dataset: str = "maze2d-large-v1-test2"
+    dataset: str = "maze2d-large-v1-test3"
 
 # ---------------------------------- Extra arguments ----------------------------------#
 
@@ -92,7 +92,7 @@ if waypoints is None:
     waypoints['global_start'] = argsdp.global_start
     waypoints['global_goal'] = argsdp.global_goal
 
-
+print(f"waypoints: {waypoints}")
 
 # ---------------------------------- main loop diffusion ----------------------------------#
 
@@ -262,9 +262,8 @@ for step in range(num_steps):
             )
             if terminal or (t == small_maze.max_episode_steps - 1):
                 _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-                print('in maze coord:', _coords)
                 global_traj_renderings.append((img, _coords))
-                print(f'appended img to global_traj_renderings (size {img.shape})')
+                print(f'Appended img to global_traj_renderings (size {img.shape}, coords {_coords})')
 
             # renderer.render_rollout(join(args.savepath, f'rollout.mp4'), rollout, fps=80)
 
