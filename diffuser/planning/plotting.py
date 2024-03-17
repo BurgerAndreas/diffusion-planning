@@ -11,7 +11,7 @@ import diffuser.utils as utils
 import diffuser.planning.planner as plan
 import diffuser.planning.largemaze2d as maps
 
-def render_traj(global_traj_renderings, savepath, remove_overlap=None):
+def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap=None):
     """stack images based on their coordinates (which small maze they are in)"""
 
     nrows = max([c[0] for _, c in global_traj_renderings]) + 1
@@ -20,8 +20,9 @@ def render_traj(global_traj_renderings, savepath, remove_overlap=None):
     print(f"nrows: {nrows} | ncols: {ncols}")
     print(f'Found coordinates: {[c for _, c in global_traj_renderings]}')
 
-    img_sample = global_traj_renderings[0][0]
-    empty_img = np.zeros((img_sample.shape), dtype=np.uint8)
+    if empty_img is None:
+        img_sample = global_traj_renderings[0][0]
+        empty_img = np.zeros((img_sample.shape), dtype=np.uint8)
     if remove_overlap is not None:
         empty_img = empty_img[remove_overlap[0]:-remove_overlap[0], remove_overlap[1]:-remove_overlap[1]]
 

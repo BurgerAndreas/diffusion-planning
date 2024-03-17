@@ -47,6 +47,7 @@ _remove_margins = True
 # should be [int(500/9), int(500/12)] * overlap
 remove_img_margins = None
 remove_img_margins = [int(500/9) - 1, int(500/12) - 1]
+remove_img_margins = [int(500/9), int(500/12)]
 
 # if the large maze should have an outer wall
 large_maze_outer_wall = True
@@ -172,6 +173,11 @@ else:
 
 small_maze = datasets.load_environment(args.dataset)
 print(f"Loaded environment {args.dataset}: {small_maze} (type: {type(small_maze)})")
+
+maze_img = renderer.composite(
+    # array is dummy observation. Need to pass something to get the maze layout
+    join(args.savepath, "maze_layout.png"), [np.array([[0,0,0,0], [0,0,0,0]])], ncol=1
+)
 
 global_traj = []
 global_traj_renderings = []
@@ -353,5 +359,5 @@ print(f"global_traj.shape: {global_traj.shape}")
 
 import diffuser.planning.plotting as plots
 
-plots.render_traj(global_traj_renderings, args.savepath, remove_overlap=remove_img_margins)
+plots.render_traj(global_traj_renderings, args.savepath, empty_img=maze_img, remove_overlap=remove_img_margins)
 
