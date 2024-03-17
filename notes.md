@@ -37,7 +37,7 @@ MAZE_BOUNDS = {
     "maze2d-large-v1": (0, 9, 0, 12),
 }
 - (0,0) is the top left corner
-- (0,11) is the top right corner
+- (0,12) is the top right corner
 
 What happens if we train a diffuser on a larger maze?
 - We can't train a diffuser on a larger maze, because we don't have any training data for larger mazes. The diffuser can only imitate another agent who can solve the larger maze.
@@ -51,6 +51,12 @@ How long does the diffusion model take to train?
 - maze2d_umaze_v1:
 - maze2d_medium_v1:
 
+How many parameters does the diffusion model have?
+- UNet with 3.7M parameters
+- same architecture for all maze sizes, but trained separately
+
+
+
 ## Our approach
 
 - Keep the diffusion model (e.g. trained on maze2d-large-v1) as is, without any additional training
@@ -62,3 +68,7 @@ How long does the diffusion model take to train?
 
 - size of maze2d-large-v1 = (S x S)
 - concatenate L^2 mazes to get a maze of size (L*S x L*S)
+
+Limitations
+- diffuser can only be trained on one maze layout, because walls are not enforced as constraints. The diffuser does not get the walls as information, it only sees that the agent's only move in in some parts of the maze. -> add the walls as constraints to the diffuser
+- diffuser gets reward if it reaches the goal within 0.5 units of the goal, so it never quite reaches the goal. -> change the reward function to be more strict

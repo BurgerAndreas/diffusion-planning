@@ -373,6 +373,7 @@ class MazeRenderer:
         )
         imageio.imsave(savepath, images)
         print(f"Saved {len(paths)} samples to: {savepath}")
+        return images
 
 
 class Maze2dRenderer(MazeRenderer):

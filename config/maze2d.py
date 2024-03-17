@@ -57,7 +57,7 @@ base = {
         "n_steps_per_epoch": 10000,
         "loss_type": "l2",
         "n_train_steps": 2e6,
-        "batch_size": 32, # 12GB VRAM: 64
+        "batch_size": 128, # 12GB VRAM: 64-256
         "learning_rate": 2e-4,
         "gradient_accumulate_every": 2,
         "ema_decay": 0.995,
@@ -103,6 +103,7 @@ maze2d_umaze_v1 = {
     "diffusion": {
         "horizon": 128,
         "n_diffusion_steps": 64,
+        "batch_size": 256,
     },
     "plan": {
         "horizon": 128,
@@ -114,6 +115,7 @@ maze2d_large_v1 = {
     "diffusion": {
         "horizon": 384,
         "n_diffusion_steps": 256,
+        "batch_size": 64,
     },
     "plan": {
         "horizon": 384,

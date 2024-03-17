@@ -29,8 +29,8 @@ terminate_at_reward = True
 _remove_margins = True
 
 local_start, local_goal = None, None
-local_start = np.array([1, 1])
-local_goal = np.array([1, 11])
+local_start = np.array([0, 0])
+local_goal = np.array([9, 12])
 
 # ---------------------------------- setup ----------------------------------#
 
