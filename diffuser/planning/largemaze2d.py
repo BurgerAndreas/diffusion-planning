@@ -9,6 +9,8 @@ MAZE_BOUNDS = {
     "maze2d-large-v1": (0, 9, 0, 12),
 }
 
+# TODO(Yifan, Jack): make this to whatever we need for the planner
+# just some ideas for now
 def generate_large_maze(maze_layout, n_maze_h=2, n_maze_w=2, overlap=None, large_maze_outer_wall=False):
     """
     Concatenate multiple smaller mazes to create a larger maze
@@ -39,6 +41,7 @@ def generate_large_maze(maze_layout, n_maze_h=2, n_maze_w=2, overlap=None, large
 # via maze_spec https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
 
 
+# TODO(Yifan, Andreas): does not work at all
 def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=False):
     """
     Convert global position (large maze) to local position (small maze).
@@ -53,6 +56,7 @@ def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=F
     """
     # fix input types
     global_pos = np.array(global_pos, dtype=float)
+    maze_size = np.array(maze_size, dtype=float)
     if overlap is not None:
         if np.allclose(overlap, np.array([0, 0])):
             overlap = None
@@ -71,21 +75,25 @@ def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=F
         maze_coord = np.array([ 
             global_pos[0] / small_maze_wo_walls[0], 
             global_pos[1] / small_maze_wo_walls[1]
-            ], dtype=int)
+            ])
+        maze_coord = np.round(maze_coord).astype(float)
         # print('maze coord', maze_coord, f'from global_pos: {global_pos}')
         global_pos[0] += overlap[0] * 2 * maze_coord[0]
         global_pos[1] += overlap[1] * 2 * maze_coord[1]
         # print('global_pos', global_pos)
 
     # map global position to local position
-    local_pos = np.zeros(2, dtype=int)
+    local_pos = np.zeros(2, dtype=float)
     local_pos[0] = global_pos[0] % maze_size[0]
     local_pos[1] = global_pos[1] % maze_size[1]
-    # print('local_pos', local_pos)
-
+    
+    # print('  local_pos =', local_pos, '| global_pos =', global_pos, '| maze_size =', maze_size, '| overlap =', overlap, '| large_maze_outer_wall =', large_maze_outer_wall)
+    # print('  global_pos[0] % maze_size[0] =', f'{global_pos[0]} % {maze_size[0]} =', global_pos[0] % maze_size[0])
+    # print('  global_pos[1] % maze_size[1] =', f'{global_pos[1]} % {maze_size[1]} =', global_pos[1] % maze_size[1])
+    
     # original maze had outer walls
-    local_pos[0] += 1
-    local_pos[1] += 1
+    # local_pos[0] += 1
+    # local_pos[1] += 1
 
     assert np.all(local_pos >= 0) and np.all(local_pos <= maze_size), \
         f'local_pos: {local_pos} (from global_pos: {global_pos}) and maze_size: {maze_size} and overlap: {overlap}'

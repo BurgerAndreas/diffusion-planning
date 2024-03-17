@@ -3,10 +3,15 @@
 ## FAQ
 
 What is Multi2D?
-- Modification of the original Maze2D, with randomized goal location at the beginning of each episode ('multi-task')
+- Multi2D is really just Maze2D, but with randomized goal location at the beginning of each episode ('multi-task')
+- They are the original [Point Maze environment](https://robotics.farama.org/envs/maze/point_maze/) with the offline training data from the D4RL benchmark
 
 Is Maze2D discrete or continuous?
-- Even though it looks discrete, it is continuous. The agent can move in any direction, but the environment is designed to look like a grid.
+- Even though it looks discrete, it is continuous to the diffuser. The agent can move in any direction
+- The environment is generated as a grid
+
+Can diffuser output trajectories with 'holes'?
+- No. The diffuser controls a ball. The output are linear forces on the ball (x_force, y_force). The observation space is (x_coord, y_coord, x_velocity, y_velocity).
 
 Are we rendering the diffuser output or is the rendering the input to the diffuser?
 - The rendering is just for visualization. The input and output to the diffuser is (batch_size, planning_horizon, state_dim + action_dim)
@@ -41,9 +46,6 @@ MAZE_BOUNDS = {
 
 What happens if we train a diffuser on a larger maze?
 - We can't train a diffuser on a larger maze, because we don't have any training data for larger mazes. The diffuser can only imitate another agent who can solve the larger maze.
-
-Can diffuser output trajectories with 'holes'?
-- No. The diffuser controls a ball. The output are linear forces on the ball (x_force, y_force). The observation space is (x_coord, y_coord, x_velocity, y_velocity).
 
 How long does the diffusion model take to train? 
 - A separate model is trained for each maze size. On one RTX3060, with default parameters:

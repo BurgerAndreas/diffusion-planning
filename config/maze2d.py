@@ -192,6 +192,9 @@ maze2d_large_v1_test1 = {
     },
 }
 
+# no overlap, no outer wall, just concat smaller mazes as they are
+# x: [0,9][9,18]
+# y: [0,12][12,24]
 maze2d_large_v1_test2 = {
     **maze2d_large_v1,
     "diffusion_planner": {
@@ -199,13 +202,14 @@ maze2d_large_v1_test2 = {
         "large_maze_outer_wall": False,
         # if the small mazes should overlap when combined (i.e. their outer walls are removed)
         "overlap": None,
+        "remove_img_margins": None,
         # desired trajectory
-        "global_start": np.array([1.5, 1.5], dtype=float),
-        "global_goal": np.array([14.5, 18.5], dtype=float),
+        "global_start": np.array([.5, .5], dtype=float),
+        "global_goal": np.array([17.5, 23.5], dtype=float),
         "waypoints": {
             "global_start": np.array([1.5, 1.5], dtype=float),
-            "waypoint1": np.array([7.9, 10.9]), # just at the border if overlap=[1,1]
-            "waypoint2": np.array([8.1, 11.1]),
+            "waypoint1": np.array([8.9, 11.9]), # just at the border
+            "waypoint2": np.array([9.1, 12.1]),
             "global_goal": np.array([14.5, 18.5], dtype=float),
         },
     },

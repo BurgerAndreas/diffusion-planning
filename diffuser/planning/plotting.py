@@ -17,8 +17,8 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
     nrows = max([c[0] for _, c in global_traj_renderings]) + 1
     ncols = max([c[1] for _, c in global_traj_renderings]) + 1
 
-    print(f"nrows: {nrows} | ncols: {ncols}")
-    print(f'Found coordinates: {[c for _, c in global_traj_renderings]}')
+    # print(f"nrows: {nrows} | ncols: {ncols}")
+    # print(f'Found coordinates: {[c for _, c in global_traj_renderings]}')
 
     if empty_img is None:
         img_sample = global_traj_renderings[0][0]

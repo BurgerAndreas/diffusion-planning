@@ -28,7 +28,7 @@ class Parser(utils.Parser):
     # maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1
     config: str = "config.maze2d"
     # dataset: str = "maze2d-large-v1"
-    dataset: str = "maze2d-large-v1-test1"
+    dataset: str = "maze2d-large-v1-test2"
 
 # ---------------------------------- Extra arguments ----------------------------------#
 
@@ -89,6 +89,8 @@ print('large maze size =', large_maze.shape)
 waypoints = plan.plan_waypoints(large_maze, argsdp.global_start, argsdp.global_goal)
 if waypoints is None:
     waypoints = argsdp.waypoints
+    waypoints['global_start'] = argsdp.global_start
+    waypoints['global_goal'] = argsdp.global_goal
 
 
 
