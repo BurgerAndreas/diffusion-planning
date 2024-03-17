@@ -32,8 +32,6 @@ args = Parser().parse_args("plan")
 
 # logger = utils.Logger(args)
 
-# TODO(Yifan): Construct a larger maze by concatenating multiple smaller mazes
-large_maze = None
 
 # ---------------------------------- loading ----------------------------------#
 
@@ -50,33 +48,82 @@ policy = Policy(diffusion, dataset.normalizer)
 
 # ---------------------------------- main loop planner ----------------------------------#
 
-# TODO(Yifan, Jack)
-# - Discretize the larger maze into a grid for the planner
-# - Get the planner to output a trajectory in the larger maze
-# - Sample waypoints on the planner trajectory and use them as start and goal locations for the diffuser
-waypoints = {
-    "global_start": np.array([0, 0]),
-    "waypoint1": np.array([5, 5]),
-    "waypoint2": np.array([7, 7]),
-    "global_goal": np.array([10, 10]),
-}
-
+# TODO(Yifan): Construct a larger maze by concatenating multiple smaller mazes
 # might be helful
 # https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
 # WALL = 10
 # EMPTY = 11
 # GOAL = 12
 small_maze = datasets.load_environment(args.dataset)
-print('maze layout', small_maze.maze_arr)
+maze_layout = small_maze.maze_arr
+small_maze_size = maze_layout.shape
+print('maze layout\n', maze_layout)
+
+def generate_large_maze(n_maze_h=2, n_maze_w=2, maze_layout=maze_layout, overlap=None):
+    """
+    Concatenate multiple smaller mazes to create a larger maze
+    """
+    # each maze is surrounded by walls, so remove them (10 -> 11)
+    maze_layout[0, :] = 11
+    maze_layout[-1, :] = 11
+    maze_layout[:, 0] = 11
+    maze_layout[:, -1] = 11
+    if overlap is not None:
+        # remove rows and columns from the smaller maze
+        maze_layout = maze_layout[overlap[0]:-overlap[0], overlap[1]:-overlap[1]]
+    # remove random goal (12)
+    maze_layout[maze_layout == 12] = 11
+    large_maze = np.tile(maze_layout, (n_maze_h, n_maze_w))
+    if overlap is not None:
+        # extend the large maze by 1 row and column
+        large_maze = np.pad(large_maze, ((1, 1), (1, 1)), mode='constant', constant_values=11)
+    # add walls around the large maze
+    large_maze[0, :] = 10
+    large_maze[-1, :] = 10
+    large_maze[:, 0] = 10
+    large_maze[:, -1] = 10
+    return large_maze
+
+overlap = np.array([1, 1])
+large_maze = generate_large_maze(n_maze_h=2, n_maze_w=2, maze_layout=maze_layout, overlap=overlap)
+small_maze_size -= (overlap * 2)
+
+# Maybe better: construct maze as a proper gym / mujoco env that we can render
+# via maze_spec https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
+
+# just for testing
+global_start = np.array([1, 1])
+global_goal = np.array([large_maze.shape[0] - 2, large_maze.shape[1] - 2])
+
+
+# TODO(Yifan, Jack)
+# - Discretize the larger maze into a grid for the planner
+# - Get the planner to output a trajectory in the larger maze
+# - Sample waypoints on the planner trajectory and use them as start and goal locations for the diffuser
+waypoints = {
+    "global_start": global_start,
+    "waypoint1": np.array([5, 5]),
+    "waypoint2": np.array([15, 15]),
+    "global_goal": global_goal,
+}
+
 
 # ---------------------------------- main loop diffusion ----------------------------------#
 
-# TODO(Andreas): how do we deal with waypoints that cross maze boundaries?
+# TODO(Andreas): how do we deal with planned trajectories that cross maze boundaries?
+# - sampe two waypoints right next to each other at the boundary, one in each maze
+# diffuser does not 'see' the walls. But all data it is trained from does not touch the walls.
+# i.e. just setting a waypoint on the boundary will be out of distribution and might fail (try!)
+# Instead we couldlet the mazes overlap a bit, 
+# so that a waypoint just inside the outer walls are actually at the boundary to the next maze
 
 waypoint_list = list(waypoints.keys())
 for step in range(len(waypoint_list)-1):
     local_start_idx, local_goal_idx = waypoint_list[step], waypoint_list[step + 1]
     local_start, local_goal = waypoints[local_start_idx], waypoints[local_goal_idx]
+    # convert to local coordinates
+    local_start = local_start % small_maze_size
+    local_goal = local_goal % small_maze_size
     print(f"local_start: {local_start} | local_goal: {local_goal}")
 
     small_maze = datasets.load_environment(args.dataset)
@@ -91,7 +138,7 @@ for step in range(len(waypoint_list)-1):
 
     # TODO(Andreas): modify to take in waypoints from planner
     # Set the start and goal locations in the maze env
-    # for the diffusion we only need to set the conditioning,
+    # For the diffusion we only need to set the conditioning,
     # but we need the maze for rendering, reward, and terminal checks
     observation = small_maze.reset_to_location(local_start)
     small_maze.set_target(target_location=local_goal)
