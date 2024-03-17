@@ -26,6 +26,16 @@ class Parser(utils.Parser):
     dataset: str = "maze2d-large-v1"
     config: str = "config.maze2d"
 
+# ---------------------------------- Extra arguments ----------------------------------#
+
+plot_conditioning = False # plot start and end points
+
+# terminate as soon as the reward is reached # default is False
+terminate_at_reward = True
+
+# remove margins from plotted trajectory
+_remove_margins = False
+
 # ---------------------------------- setup ----------------------------------#
 
 args = Parser().parse_args("plan")
@@ -43,6 +53,7 @@ diffusion_experiment = utils.load_diffusion(
 diffusion = diffusion_experiment.ema
 dataset = diffusion_experiment.dataset
 renderer = diffusion_experiment.renderer
+renderer._remove_margins = _remove_margins
 
 policy = Policy(diffusion, dataset.normalizer)
 
@@ -58,6 +69,13 @@ small_maze = datasets.load_environment(args.dataset)
 maze_layout = small_maze.maze_arr
 small_maze_size = maze_layout.shape
 print('maze layout\n', maze_layout)
+
+# from `diffuser/utils/rendering.py`: 
+MAZE_BOUNDS = {
+    "maze2d-umaze-v1": (0, 5, 0, 5),
+    "maze2d-medium-v1": (0, 8, 0, 8),
+    "maze2d-large-v1": (0, 9, 0, 12),
+}
 
 def generate_large_maze(n_maze_h=2, n_maze_w=2, maze_layout=maze_layout, overlap=None):
     """
@@ -113,7 +131,9 @@ waypoints = {
 # TODO(Andreas): how do we deal with planned trajectories that cross maze boundaries?
 # - sampe two waypoints right next to each other at the boundary, one in each maze
 # diffuser does not 'see' the walls. But all data it is trained from does not touch the walls.
-# i.e. just setting a waypoint on the boundary will be out of distribution and might fail (try!)
+# i.e. just setting a waypoint on the boundary will be out of distribution and fail.
+# e.g. this is the closest to the wall the diffuser will every go: 
+# maze | pos: [ 0.99922423 10.19801523] | goal: [ 1 11]
 # Instead we couldlet the mazes overlap a bit, 
 # so that a waypoint just inside the outer walls are actually at the boundary to the next maze
 
@@ -225,17 +245,27 @@ for step in range(len(waypoint_list)-1):
 
         # logger.log(score=score, step=t)
 
-        if t % args.vis_freq == 0 or terminal:
+        if terminate_at_reward and reward > 0:
+            terminal = True
+            print(f"Reached reward at step {t} | R: {total_reward:.2f} | score: {score:.4f}")
+
+        if (t % args.vis_freq == 0) or terminal or (t == small_maze.max_episode_steps - 1):
             fullpath = join(args.savepath, f"{t}.png")
 
+            if plot_conditioning:
+                # make conditions into an array with the same length as the number of samples
+                conditions = [np.stack(list(cond.values()))]
+            else:
+                conditions = [None]
+
             if t == 0:
-                renderer.composite(fullpath, samples.observations, ncol=1)
+                renderer.composite(fullpath, samples.observations, ncol=1, conditions=conditions)
 
             # renderer.render_plan(join(args.savepath, f'{t}_plan.mp4'), samples.actions, samples.observations, state)
 
             ## save rollout thus far
             renderer.composite(
-                join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1
+                join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1, conditions=conditions
             )
 
             # renderer.render_rollout(join(args.savepath, f'rollout.mp4'), rollout, fps=80)

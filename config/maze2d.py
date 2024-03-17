@@ -27,6 +27,7 @@ plan_args_to_watch = [
     ("conditional", "cond"),
 ]
 
+# 10k steps per epoch * 200 epochs = 2M steps
 base = {
     "diffusion": {
         ## model
@@ -56,12 +57,12 @@ base = {
         "n_steps_per_epoch": 10000,
         "loss_type": "l2",
         "n_train_steps": 2e6,
-        "batch_size": 32,
+        "batch_size": 32, # 12GB VRAM: 64
         "learning_rate": 2e-4,
         "gradient_accumulate_every": 2,
         "ema_decay": 0.995,
-        "save_freq": 1000,
-        "sample_freq": 1000,
+        "save_freq": 10000, # in steps
+        "sample_freq": 10000,
         "n_saves": 50,
         "save_parallel": False,
         "n_reference": 50,
@@ -77,7 +78,7 @@ base = {
         "n_diffusion_steps": 256,
         "normalizer": "LimitsNormalizer",
         ## serialization
-        "vis_freq": 10,
+        "vis_freq": 100,
         "logbase": "logs",
         "prefix": "plans/release",
         "exp_name": watch(plan_args_to_watch),

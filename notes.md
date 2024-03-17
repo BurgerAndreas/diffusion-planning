@@ -36,6 +36,8 @@ MAZE_BOUNDS = {
     "maze2d-medium-v1": (0, 8, 0, 8),
     "maze2d-large-v1": (0, 9, 0, 12),
 }
+- (0,0) is the top left corner
+- (0,11) is the top right corner
 
 What happens if we train a diffuser on a larger maze?
 - We can't train a diffuser on a larger maze, because we don't have any training data for larger mazes. The diffuser can only imitate another agent who can solve the larger maze.

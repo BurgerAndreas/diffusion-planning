@@ -47,11 +47,12 @@ def atmost_2d(x):
 
 def zipsafe(*args):
     length = len(args[0])
-    assert all([len(a) == length for a in args])
+    assert all([len(a) == length for a in args]), f'args must have the same length={length}: {args}'
     return zip(*args)
 
 
 def zipkw(*args, **kwargs):
+    """zip args and kwargs"""
     nargs = len(args)
     keys = kwargs.keys()
     vals = [kwargs[k] for k in keys]
@@ -343,6 +344,9 @@ class MazeRenderer:
         colors = plt.cm.jet(np.linspace(0, 1, path_length))
         plt.plot(observations[:, 1], observations[:, 0], c="black", zorder=10)
         plt.scatter(observations[:, 1], observations[:, 0], c=colors, zorder=20)
+        if conditions is not None:
+            for val in conditions:
+                plt.scatter(val[1], val[0], marker="x", c="black", s=100, zorder=30)
         plt.axis("off")
         plt.title(title)
         img = plot2img(fig, remove_margins=self._remove_margins)
@@ -390,15 +394,18 @@ class Maze2dRenderer(MazeRenderer):
         if len(bounds) == 2:
             _, scale = bounds
             observations /= scale
+            if conditions is not None:
+                conditions /= scale
         elif len(bounds) == 4:
             _, iscale, _, jscale = bounds
             observations[:, 0] /= iscale
             observations[:, 1] /= jscale
+            if conditions is not None:
+                conditions[:, 0] /= iscale
+                conditions[:, 1] /= jscale
         else:
             raise RuntimeError(f"Unrecognized bounds for {self.env_name}: {bounds}")
 
-        if conditions is not None:
-            conditions /= scale
         return super().renders(observations, conditions, **kwargs)
 
 
