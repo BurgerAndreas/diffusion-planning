@@ -9,7 +9,7 @@ MAZE_BOUNDS = {
     "maze2d-large-v1": (0, 9, 0, 12),
 }
 
-def generate_large_maze(maze_layout, n_maze_h=2, n_maze_w=2, overlap=None):
+def generate_large_maze(maze_layout, n_maze_h=2, n_maze_w=2, overlap=None, large_maze_outer_wall=False):
     """
     Concatenate multiple smaller mazes to create a larger maze
     """
@@ -27,14 +27,13 @@ def generate_large_maze(maze_layout, n_maze_h=2, n_maze_w=2, overlap=None):
     if overlap is not None:
         # extend the large maze by 1 row and column
         large_maze = np.pad(large_maze, ((1, 1), (1, 1)), mode='constant', constant_values=11)
-    # add walls around the large maze
-    large_maze[0, :] = 10
-    large_maze[-1, :] = 10
-    large_maze[:, 0] = 10
-    large_maze[:, -1] = 10
+    if large_maze_outer_wall == True:
+        # add walls around the large maze
+        large_maze[0, :] = 10
+        large_maze[-1, :] = 10
+        large_maze[:, 0] = 10
+        large_maze[:, -1] = 10
     return large_maze
-
-
 
 # Maybe better: construct maze as a proper gym / mujoco env that we can render
 # via maze_spec https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py

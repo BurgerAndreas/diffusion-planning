@@ -20,7 +20,7 @@ args = Parser().parse_args("diffusion")
 # ---------------------------------- dataset ----------------------------------#
 # -----------------------------------------------------------------------------#
 
-print(f"Loading dataset {args.dataset} at {args.savepath}", end=" ", flush=True)
+print(f"Loading dataset {args.dataset} at {args.savepath}")
 
 dataset_config = utils.Config(
     args.loader,
@@ -42,7 +42,7 @@ render_config = utils.Config(
 dataset = dataset_config()
 renderer = render_config()
 
-print(f"observation_dim: {dataset.observation_dim} | action_dim: {dataset.action_dim}", end=" ", flush=True)
+print(f"observation_dim: {dataset.observation_dim} | action_dim: {dataset.action_dim}")
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
 

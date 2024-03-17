@@ -1,4 +1,5 @@
 import socket
+import numpy as np
 
 from diffuser.utils import watch
 
@@ -25,6 +26,10 @@ plan_args_to_watch = [
     ("batch_size", "b"),
     ##
     ("conditional", "cond"),
+]
+
+experiment_args_to_watch = [
+    ("experiment_name", ""),
 ]
 
 # 10k steps per epoch * 200 epochs = 2M steps
@@ -88,6 +93,42 @@ base = {
         "diffusion_loadpath": "f:diffusion/H{horizon}_T{n_diffusion_steps}",
         "diffusion_epoch": "latest",
     },
+    # Added by Andreas
+    "diffusion_planner": {
+        # how many smaller mazes to concatenate to create a larger maze
+        "n_maze_h": 2,
+        "n_maze_w": 2,
+        # if the large maze should have an outer wall
+        "large_maze_outer_wall": True,
+        # if the small mazes should overlap when combined (i.e. their outer walls are removed)
+        "overlap": np.array([1, 1]),
+        # If True:  w1 -> w2, w2 -> w3, w3 -> w4, ...
+        # If False: w1 -> w2, w3 -> w4, ...
+        "overlapping_waypoint_pairs": False,
+        # desired trajectory
+        "global_start": np.array([1.5, 1.5], dtype=float),
+        "global_goal": np.array([19.5, 19.5], dtype=float),
+        "waypoints": {
+            "global_start": np.array([1.5, 1.5], dtype=float),
+            "waypoint1": np.array([7.9, 10.9]), # just at the border if overlap=[1,1]
+            "waypoint2": np.array([8.1, 11.1]),
+            "global_goal": np.array([19.5, 19.5], dtype=float),
+        },
+        # plotting
+        "plot_conditioning": True, # plot start and end points
+        # terminate as soon as the reward is reached # default is False
+        "terminate_at_reward": True,
+        # if we should terminate if the agent stops moving for 10 steps
+        "terminate_if_stuck": False,
+        # remove whitespace around image of trajectory
+        "_remove_margins": True,
+        # remove walls around sub-mazes when plotting large maze
+        # image size is 500x500, maze size is 9x12
+        # should be [int(500/9), int(500/12)] * overlap
+        # "remove_img_margins": None,
+        # "remove_img_margins": [int(500/9), int(500/12)], # slight border in between
+        "remove_img_margins": [int(500/9)+1, int(500/12)+1],
+    }
 }
 
 # ------------------------ overrides ------------------------#
@@ -120,5 +161,52 @@ maze2d_large_v1 = {
     "plan": {
         "horizon": 384,
         "n_diffusion_steps": 256,
+    },
+}
+
+
+# ------------------------ diffusion_planner test overrides ------------------------#
+
+maze2d_large_v1_test1 = {
+    **maze2d_large_v1,
+    "diffusion_planner": {
+        # how many smaller mazes to concatenate to create a larger maze
+        "n_maze_h": 2,
+        "n_maze_w": 2,
+        # if the large maze should have an outer wall
+        "large_maze_outer_wall": True,
+        # if the small mazes should overlap when combined (i.e. their outer walls are removed)
+        "overlap": np.array([1, 1]),
+        # If True:  w1 -> w2, w2 -> w3, w3 -> w4, ...
+        # If False: w1 -> w2, w3 -> w4, ...
+        "overlapping_waypoint_pairs": False,
+        # desired trajectory
+        "global_start": np.array([1.5, 1.5], dtype=float),
+        "global_goal": np.array([14.5, 18.5], dtype=float),
+        "waypoints": {
+            "global_start": np.array([1.5, 1.5], dtype=float),
+            "waypoint1": np.array([7.9, 10.9]), # just at the border if overlap=[1,1]
+            "waypoint2": np.array([8.1, 11.1]),
+            "global_goal": np.array([14.5, 18.5], dtype=float),
+        },
+    },
+}
+
+maze2d_large_v1_test2 = {
+    **maze2d_large_v1,
+    "diffusion_planner": {
+        # if the large maze should have an outer wall
+        "large_maze_outer_wall": False,
+        # if the small mazes should overlap when combined (i.e. their outer walls are removed)
+        "overlap": None,
+        # desired trajectory
+        "global_start": np.array([1.5, 1.5], dtype=float),
+        "global_goal": np.array([14.5, 18.5], dtype=float),
+        "waypoints": {
+            "global_start": np.array([1.5, 1.5], dtype=float),
+            "waypoint1": np.array([7.9, 10.9]), # just at the border if overlap=[1,1]
+            "waypoint2": np.array([8.1, 11.1]),
+            "global_goal": np.array([14.5, 18.5], dtype=float),
+        },
     },
 }

@@ -26,38 +26,14 @@ import diffuser.planning.largemaze2d as maps
 
 class Parser(utils.Parser):
     # maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1
-    dataset: str = "maze2d-large-v1"
     config: str = "config.maze2d"
+    # dataset: str = "maze2d-large-v1"
+    dataset: str = "maze2d-large-v1-test1"
 
 # ---------------------------------- Extra arguments ----------------------------------#
 
-plot_conditioning = True # plot start and end points
-
-# terminate as soon as the reward is reached # default is False
-terminate_at_reward = True
-
-#
-terminate_if_stuck = False
-
-# remove whitespace around image of trajectory
-_remove_margins = True
-
-# remove walls around sub-mazes when plotting large maze
-# image size is 500x500, maze size is 9x12
-# should be [int(500/9), int(500/12)] * overlap
-remove_img_margins = None
-remove_img_margins = [int(500/9) - 1, int(500/12) - 1]
-remove_img_margins = [int(500/9), int(500/12)]
-
-# if the large maze should have an outer wall
-large_maze_outer_wall = True
-
-# if the small mazes should overlap when combined (i.e. their outer walls are removed)
-overlap = np.array([1, 1])
-
-# If True:  w1 -> w2, w2 -> w3, w3 -> w4, ...
-# If False: w1 -> w2, w3 -> w4, ...
-overlapping_waypoint_pairs = False
+argsdp = Parser().parse_args("diffusion_planner")
+# print(f"argsdp: {argsdp}")
 
 # ---------------------------------- setup ----------------------------------#
 
@@ -65,6 +41,8 @@ args = Parser().parse_args("plan")
 
 # logger = utils.Logger(args)
 
+# remove from dataset name so we can load the right pretrained diffusion model
+args.dataset = args.dataset.split("-test")[0]
 
 # ---------------------------------- loading ----------------------------------#
 
@@ -76,7 +54,7 @@ diffusion_experiment = utils.load_diffusion(
 diffusion = diffusion_experiment.ema
 dataset = diffusion_experiment.dataset
 renderer = diffusion_experiment.renderer
-renderer._remove_margins = _remove_margins
+renderer._remove_margins = argsdp._remove_margins
 
 policy = Policy(diffusion, dataset.normalizer)
 
@@ -94,41 +72,8 @@ small_maze_size = maze_layout.shape
 print('maze layout\n', maze_layout)
 print('small maze size =', small_maze_size)
 
-# from `diffuser/utils/rendering.py`: 
-MAZE_BOUNDS = {
-    "maze2d-umaze-v1": (0, 5, 0, 5),
-    "maze2d-medium-v1": (0, 8, 0, 8),
-    "maze2d-large-v1": (0, 9, 0, 12),
-}
 
-def generate_large_maze(maze_layout, n_maze_h=2, n_maze_w=2, overlap=None, large_maze_outer_wall=False):
-    """
-    Concatenate multiple smaller mazes to create a larger maze
-    """
-    # each maze is surrounded by walls, so remove them (10 -> 11)
-    maze_layout[0, :] = 11
-    maze_layout[-1, :] = 11
-    maze_layout[:, 0] = 11
-    maze_layout[:, -1] = 11
-    if overlap is not None:
-        # remove rows and columns from the smaller maze
-        maze_layout = maze_layout[overlap[0]:-overlap[0], overlap[1]:-overlap[1]]
-    # remove random goal (12)
-    maze_layout[maze_layout == 12] = 11
-    large_maze = np.tile(maze_layout, (n_maze_h, n_maze_w))
-    if overlap is not None:
-        # extend the large maze by 1 row and column
-        large_maze = np.pad(large_maze, ((1, 1), (1, 1)), mode='constant', constant_values=11)
-    if large_maze_outer_wall == True:
-        # add walls around the large maze
-        large_maze[0, :] = 10
-        large_maze[-1, :] = 10
-        large_maze[:, 0] = 10
-        large_maze[:, -1] = 10
-    return large_maze
-
-
-large_maze = generate_large_maze(maze_layout=maze_layout, n_maze_h=2, n_maze_w=2, overlap=overlap, large_maze_outer_wall=large_maze_outer_wall)
+large_maze = maps.generate_large_maze(maze_layout=maze_layout, n_maze_h=2, n_maze_w=2, overlap=argsdp.overlap, large_maze_outer_wall=argsdp.large_maze_outer_wall)
 print('large maze\n', large_maze)
 print('large maze size =', large_maze.shape)
 # small_maze_size -= (overlap * 2)
@@ -136,21 +81,14 @@ print('large maze size =', large_maze.shape)
 # Maybe better: construct maze as a proper gym / mujoco env that we can render
 # via maze_spec https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
 
-# just for testing
-global_start = np.array([1., 1.], dtype=float)
-global_goal = np.array([large_maze.shape[0] - 2, large_maze.shape[1] - 2], dtype=float)
-
 
 # TODO(Yifan, Jack)
 # - Discretize the larger maze into a grid for the planner
 # - Get the planner to output a trajectory in the larger maze
 # - Sample waypoints on the planner trajectory and use them as start and goal locations for the diffuser
-waypoints = {
-    "global_start": global_start,
-    "waypoint1": np.array([7.9, 10.9]), # just at the border if overlap=[1,1]
-    "waypoint2": np.array([8.1, 11.1]),
-    "global_goal": global_goal,
-}
+waypoints = plan.plan_waypoints(large_maze, argsdp.global_start, argsdp.global_goal)
+if waypoints is None:
+    waypoints = argsdp.waypoints
 
 
 
@@ -165,7 +103,7 @@ waypoints = {
 # Instead we could let the mazes overlap a bit, 
 # so that a waypoint just inside the outer walls are actually at the boundary to the next maze
 
-if overlapping_waypoint_pairs == True:
+if argsdp.overlapping_waypoint_pairs == True:
     num_steps = len(waypoints) - 1
 else:
     assert len(waypoints) % 2 == 0
@@ -186,7 +124,7 @@ for step in range(num_steps):
 
     print(f"\nLocal traj {step} / num_steps")
 
-    if overlapping_waypoint_pairs == True:
+    if argsdp.overlapping_waypoint_pairs == True:
         local_start_idx, local_goal_idx = waypoint_list[step], waypoint_list[step + 1]
     else:
         idx = 2 * step
@@ -196,8 +134,8 @@ for step in range(num_steps):
     local_start_gc, local_goal_gc = waypoints[local_start_idx], waypoints[local_goal_idx]
 
     # convert global coordinates to local coordinates
-    local_start = maps.global_to_local(local_start_gc, small_maze_size, overlap, large_maze_outer_wall)
-    local_goal = maps.global_to_local(local_goal_gc, small_maze_size, overlap, large_maze_outer_wall)
+    local_start = maps.global_to_local(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+    local_goal = maps.global_to_local(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
     print(f"local_start: {local_start} | local_goal: {local_goal}")
 
     # reinstantiate the maze?
@@ -293,19 +231,19 @@ for step in range(num_steps):
 
         # logger.log(score=score, step=t)
 
-        if terminate_if_stuck and t > 10:
+        if argsdp.terminate_if_stuck and t > 10:
             if np.allclose([np.array(o) for o in rollout[-10:]], atol=1e-2):
                 print(f"Stuck at step {t} | R: {total_reward:.2f} | score: {score:.4f}")
                 break
 
-        if terminate_at_reward and reward > 0:
+        if argsdp.terminate_at_reward and reward > 0:
             terminal = True
             print(f"Reached reward at step {t} | R: {total_reward:.2f} | score: {score:.4f}")
 
         if (t % args.vis_freq == 0) or terminal or (t == small_maze.max_episode_steps - 1):
             fullpath = join(args.savepath, f"{t}.png")
 
-            if plot_conditioning:
+            if argsdp.plot_conditioning:
                 # make conditions into an array with the same length as the number of samples
                 conditions = [np.stack(list(cond.values()))]
             else:
@@ -321,7 +259,7 @@ for step in range(num_steps):
                 join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1, conditions=conditions
             )
             if terminal or (t == small_maze.max_episode_steps - 1):
-                _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, overlap, large_maze_outer_wall)
+                _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
                 print('in maze coord:', _coords)
                 global_traj_renderings.append((img, _coords))
                 print(f'appended img to global_traj_renderings (size {img.shape})')
@@ -359,5 +297,5 @@ print(f"global_traj.shape: {global_traj.shape}")
 
 import diffuser.planning.plotting as plots
 
-plots.render_traj(global_traj_renderings, args.savepath, empty_img=maze_img, remove_overlap=remove_img_margins)
+plots.render_traj(global_traj_renderings, args.savepath, empty_img=maze_img, remove_overlap=argsdp.remove_img_margins)
 
