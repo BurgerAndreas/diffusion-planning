@@ -331,12 +331,13 @@ class MazeRenderer:
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
         self._plot_obs = True
+        self._plot_grid = False
 
     def renders(self, observations, conditions=None, title=None):
         plt.clf()
         fig = plt.gcf()
         fig.set_size_inches(5, 5)
-        plt.imshow(
+        ax = plt.imshow(
             self._background * 0.5,
             extent=self._extent,
             cmap=plt.cm.binary,
@@ -352,8 +353,31 @@ class MazeRenderer:
         if conditions is not None:
             for val in conditions:
                 plt.scatter(val[1], val[0], marker="x", c="black", s=100, zorder=30)
-        plt.axis("off")
+        
         plt.title(title)
+
+        if self._plot_grid:
+            # v1
+            # get the current axes
+            ax = plt.gca()
+            # print ax limits
+            axmax = float(ax.get_xlim()[1]) # 1
+            # Major ticks
+            xticks = np.arange(0, axmax, axmax/12)
+            yticks = np.arange(0, axmax, axmax/9)
+            ax.set_xticks(xticks)
+            ax.set_yticks(yticks)
+            plt.grid(True, which="major", color="black", linestyle="--", linewidth=1)
+            # v2
+            # plt.gca().xaxis.set_major_locator(plt.MultipleLocator(.1))
+            # plt.gca().yaxis.set_major_locator(plt.MultipleLocator(.1))
+            # v3
+            # locmin = matplotlib.ticker.LogLocator(base=10.0,subs=(0.2,0.4,0.6,0.8),numticks=12)
+            # ax.yaxis.set_minor_locator(locmin)
+
+        else:
+            plt.axis("off")
+
         img = plot2img(fig, remove_margins=self._remove_margins)
         return img
 
@@ -393,6 +417,7 @@ class Maze2dRenderer(MazeRenderer):
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
         self._plot_obs = True
+        self._plot_grid = False
 
     def renders(self, observations, conditions=None, **kwargs):
         bounds = MAZE_BOUNDS[self.env_name]

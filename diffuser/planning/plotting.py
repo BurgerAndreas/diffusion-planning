@@ -11,7 +11,7 @@ import diffuser.utils as utils
 import diffuser.planning.planner as plan
 import diffuser.planning.largemaze2d as maps
 
-def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap=None):
+def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap=None, add_outer_walls=False):
     """stack images based on their coordinates (which small maze they are in)"""
 
     nrows = max([c[0] for _, c in global_traj_renderings]) + 1
@@ -19,6 +19,18 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
 
     # print(f"nrows: {nrows} | ncols: {ncols}")
     # print(f'Found coordinates: {[c for _, c in global_traj_renderings]}')
+
+    # img_sample = global_traj_renderings[0][0]
+    # wall_color = img_sample[0, 0] # [127 127 127 255]
+    # pad3 = (0, 0, 0, 0)
+
+    # wall_color = [127, 127, 127]
+    # pad3 = (0, 0, 0)
+
+    # 255 white, 0 black, 100 gray
+    wall_color = 127
+    pad3 = (0, 0)
+
 
     if empty_img is None:
         img_sample = global_traj_renderings[0][0]
@@ -45,6 +57,11 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
     images = einops.rearrange(
         images, "(nrow ncol) H W C -> (nrow H) (ncol W) C", nrow=nrows, ncol=ncols
     )
+    # add_outer_walls, same thickness as the overlap
+    if add_outer_walls is True:
+        print(f'shape before padding: {images.shape}')
+        images = np.pad(images, ((remove_overlap[0], remove_overlap[0]), (remove_overlap[1], remove_overlap[1]), pad3), mode='constant', constant_values=wall_color)
+        print(f'shape after padding: {images.shape}')
     # save
     img_path = join(savepath, "global_traj_v1.png")
     imageio.imsave(img_path, images)
@@ -59,6 +76,8 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
             row * img.shape[0] : (row + 1) * img.shape[0],
             col * img.shape[1] : (col + 1) * img.shape[1],
         ] = img
+    if add_outer_walls is True:
+        total_image = np.pad(total_image, ((remove_overlap[0], remove_overlap[0]), (remove_overlap[1], remove_overlap[1]), pad3), mode='constant', constant_values=wall_color)
     # save
     img_path = join(savepath, "global_traj_v2.png")
     imageio.imsave(img_path, total_image)
@@ -71,6 +90,31 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
     img_path = join(savepath, "global_traj_v3.png")
     imageio.imsave(img_path, global_traj_img)
     print(f'saving v3 to {img_path}')
+
+def render_maze_layout(renderer, savepath):
+    # render the maze layout without any trajectory
+    renderer._plot_obs = False
+    dummy = np.array([[0,0,0,0], [0,0,0,0]]) + 1
+    maze_img = renderer.composite(
+        # array is dummy observation. Need to pass something to get the maze layout
+        join(savepath, "maze_layout.png"), [dummy], ncol=1
+    )
+    renderer._plot_obs = True
+    return maze_img
+
+def render_discretized_maze_layout(renderer, savepath):
+    # render the discretized maze layout
+    renderer._plot_grid = True
+    renderer._plot_obs = False
+    dummy = np.array([[0,0,0,0], [0,0,0,0]]) + 1
+    maze_discrete = renderer.composite(
+        # array is dummy observation. Need to pass something to get the maze layout
+        join(savepath, "maze_discretized.png"), [dummy], ncol=1
+    )
+    renderer._plot_obs = True
+    renderer._plot_grid = False
+    return maze_discrete
+
 
 if __name__ == "__main__":
     # maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1

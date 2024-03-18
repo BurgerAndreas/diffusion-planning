@@ -1,6 +1,11 @@
 import torch
 import numpy as np
 
+import gym
+import d4rl
+
+from typing import Tuple, List, Dict, Any, Union, Optional, Sequence, Iterable
+
 
 # from `diffuser/utils/rendering.py`: 
 MAZE_BOUNDS = {
@@ -8,6 +13,27 @@ MAZE_BOUNDS = {
     "maze2d-medium-v1": (0, 8, 0, 8),
     "maze2d-large-v1": (0, 9, 0, 12),
 }
+
+# maze_map format
+WALL = 10
+EMPTY = 11
+GOAL = 12
+
+# maze_spec format
+# from /home/<user>/miniforge3/envs/diffuser/lib/python3.8/site-packages/d4rl/pointmaze/maze_model.py
+U_MAZE = \
+        "#####\\"+\
+        "#GOO#\\"+\
+        "###O#\\"+\
+        "#OOO#\\"+\
+        "#####"
+
+map_to_spec = {
+    10: '#',
+    11: 'O',
+    12: 'G',
+}
+
 
 # TODO(Yifan, Jack): make this to whatever we need for the planner
 # just some ideas for now
@@ -37,14 +63,52 @@ def generate_large_maze(maze_layout, n_maze_h=2, n_maze_w=2, overlap=None, large
         large_maze[:, -1] = 10
     return large_maze
 
-# Maybe better: construct maze as a proper gym / mujoco env that we can render
-# via maze_spec https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
+def parse_maze(maze_str):
+    """Maze spec to maze map."""
+    # from /home/<user>/miniforge3/envs/diffuser/lib/python3.8/site-packages/d4rl/pointmaze/maze_model.py
+    lines = maze_str.strip().split('\\')
+    width, height = len(lines), len(lines[0])
+    maze_arr = np.zeros((width, height), dtype=np.int32)
+    for w in range(width):
+        for h in range(height):
+            tile = lines[w][h]
+            if tile == '#':
+                maze_arr[w][h] = WALL
+            elif tile == 'G':
+                maze_arr[w][h] = GOAL
+            elif tile == ' ' or tile == 'O' or tile == '0':
+                maze_arr[w][h] = EMPTY
+            else:
+                raise ValueError('Unknown tile type: %s' % tile)
+    return maze_arr
 
+def maze_map_to_maze_spec(maze_map: Union[np.ndarray, List[List[int]]]) -> str:
+    """Convert maze map (10, 11, 12) to maze spec (str)."""
+    maze_spec = ""
+    for row in maze_map:
+        maze_spec += ''.join([map_to_spec[r] for r in row])
+        maze_spec += '\\'
+    # remove trailing backslash
+    maze_spec = maze_spec[:-1]
+    return maze_spec
 
-# TODO(Yifan, Andreas): does not work at all
-def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=False):
+def maze_to_gym_env(maze):
+    """Convert maze as a proper gym / mujoco env that we can render.
+    Via maze_spec https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
+    /home/<user>/miniforge3/envs/diffuser/lib/python3.8/site-packages/d4rl/pointmaze/maze_model.py
     """
-    Convert global position (large maze) to local position (small maze).
+    maze_spec = maze_map_to_maze_spec(maze)
+    env = d4rl.pointmaze.maze_model.MazeEnv(maze_spec=maze_spec)
+    # gym.envs.registration.register(
+    #     id='gym_examples/MazeEnv-v0',
+    #     # entry_point='gym_examples.envs:GridWorldEnv',
+    #     entry_point=d4rl.pointmaze.maze_model.MazeEnv,
+    #     max_episode_steps=300,
+    # )
+    return env
+
+def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=False):
+    """Convert global position (large maze) to local position (small maze).
 
     Args:
         maze_size: size of the original small maze. without overlap (i.e. the larger numbers)
@@ -81,33 +145,90 @@ def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=F
     # add back overlap to the global position
     if overlap is not None:
         # which small maze is the global position in?
-        small_maze_wo_walls = maze_size - (overlap * 2)
-        maze_coord = np.array([ 
-            global_pos[0] / small_maze_wo_walls[0], 
-            global_pos[1] / small_maze_wo_walls[1]
-            ])
-        maze_coord = np.round(maze_coord).astype(float)
+        # small_maze_wo_walls = maze_size - (overlap * 2)
+        # maze_coord = np.array([ 
+        #     global_pos[0] / small_maze_wo_walls[0], 
+        #     global_pos[1] / small_maze_wo_walls[1]
+        #     ])
+        # maze_coord = np.round(maze_coord).astype(float)
         # add overlap for the removed outer walls
         local_pos[0] += overlap[0]
         local_pos[1] += overlap[1]
-        # add overlap*2 for each crossed border
-        # global_pos[0] += overlap[0] * 2 * maze_coord[0]
-        # global_pos[1] += overlap[1] * 2 * maze_coord[1]
     
     # print('  local_pos =', local_pos, '| global_pos =', global_pos, '| maze_size =', maze_size, '| overlap =', overlap, '| large_maze_outer_wall =', large_maze_outer_wall)
     # print('  global_pos[0] % maze_size[0] =', f'{global_pos[0]} % {maze_size[0]} =', global_pos[0] % maze_size[0])
     # print('  global_pos[1] % maze_size[1] =', f'{global_pos[1]} % {maze_size[1]} =', global_pos[1] % maze_size[1])
-    
-    # original maze had outer walls
-    # local_pos[0] += 1
-    # local_pos[1] += 1
 
     assert np.all(local_pos >= 0) and np.all(local_pos <= maze_size), \
         f'local_pos: {local_pos} (from global_pos: {global_pos}) and maze_size: {maze_size} and overlap: {overlap}'
     return local_pos
 
+# TODO(Andreas): test this
+def local_to_global(local_pos, maze_coord, maze_size, overlap=None, large_maze_outer_wall=False):
+    """Convert local position (small maze) to global position (large maze).
+    Reverse of `global_to_local`.
+
+    Args:
+        maze_coord nd.array[int,int]: which small maze is the local position in?
+        maze_size: size of the original small maze. without overlap (i.e. the larger numbers)
+        large_maze_outer_wall: if True, an outer wall was added to the large maze after removing the overlap
+    """
+    # fix input types
+    local_pos = np.array(local_pos, dtype=float)
+    maze_size = np.array(maze_size, dtype=float)
+    if overlap is not None:
+        if np.allclose(overlap, np.array([0, 0])):
+            overlap = None
+        else:
+            overlap = np.array(overlap, dtype=float)
+    
+    # remove overlap from the local position
+    if overlap is not None:
+        local_pos[0] -= overlap[0]
+        local_pos[1] -= overlap[1]
+    
+    # map local position to global position 
+    global_pos = np.zeros(2, dtype=float)
+    if overlap is not None:
+        small_maze_wo_walls = maze_size - (overlap * 2)
+        global_pos[0] = local_pos[0] * small_maze_wo_walls[0] * maze_coord[0]
+        global_pos[1] = local_pos[1] * small_maze_wo_walls[1] * maze_coord[1]
+    else:
+        global_pos[0] = local_pos[0] * maze_size[0] * maze_coord[0]
+        global_pos[1] = local_pos[1] * maze_size[1]
+
+    # add outer wall
+    if large_maze_outer_wall is True:
+        global_pos[0] += 1
+        global_pos[1] += 1
+
+    return global_pos
+
+# TODO(Andreas): test this
+def global_to_local_openmaze(global_traj1, global_traj2, open_maze_size):
+    """Convert global positions (large maze) to local positions (small maze).
+    Takes in pieces of trajectories.
+    Local frame tries to put the midpoint between the two global trajectories in the center of the open maze.
+    """
+    # just take the enpoints for now
+    global_pos1 = global_traj1[-1]
+    global_pos2 = global_traj2[0]
+    # find the midpoint
+    midpoint = (global_pos1 + global_pos2) / 2
+    mid_gc = midpoint + global_pos1
+    # convert global pos to local
+    local_pos1 = mid_gc - global_pos1 + midpoint
+    local_pos2 = mid_gc - global_pos2 + midpoint
+    print(f'global_pos1 = {global_pos1} | global_pos2 = {global_pos2}')
+    print(f'midpoint = {midpoint} | mid_gc = {mid_gc} | local_pos1 = {local_pos1} | local_pos2 = {local_pos2}')
+    # convert whole trajectory to local
+    local_traj1 = global_traj1 - (global_pos1 + midpoint).repeat(global_traj1.shape[0], axis=0)
+    local_traj2 = global_traj2 - (global_pos2 + midpoint).repeat(global_traj2.shape[0], axis=0)
+    return local_traj1, local_traj2
+
+
 def get_maze_coord_from_global_pos(global_pos, maze_size, overlap=None, large_maze_outer_wall=False):
-    """which small maze is the global position in?"""
+    """Which small maze is the global position in?"""
     # remove the outer wall that was added to the large maze
     if large_maze_outer_wall is True:
         global_pos[0] -= 1
@@ -132,17 +253,14 @@ if __name__ == "__main__":
     dataset: str = "maze2d-large-v1"
     config: str = "config.maze2d"
 
+    # d4rl.pointmaze.maze_model.MazeEnv
     small_maze = datasets.load_environment(dataset)
+    print(f'small_maze: {small_maze} {type(small_maze)}')
     maze_layout = small_maze.maze_arr
     small_maze_size = maze_layout.shape
     print('maze layout\n', maze_layout)
     print('small maze size', small_maze_size)
 
-
-
-
-    # large_maze = generate_large_maze(n_maze_h=2, n_maze_w=2, maze_layout=maze_layout, overlap=overlap)
-    # small_maze_size -= (overlap * 2)
 
     # test 1 - in the first small maze
     overlap = np.array([1, 1])
@@ -151,4 +269,42 @@ if __name__ == "__main__":
     # need to add one for the removed wall
     assert np.allclose(pos_loc1, np.array([1, 1])), f'pos_loc1: {pos_loc1}'
 
-    
+    ######################################################################
+    # try to build large maze gym env
+    # https://robotics.farama.org/envs/maze/point_maze/#custom-maze
+
+    # print registered envs
+    all_envs = gym.envs.registry.all()
+    maze_envs = [env_spec for env_spec in all_envs if 'maze' in env_spec.id.lower()]
+    # print(f'gym envs: {maze_envs}')
+    # print(f'gym envs: {gym.envs.registry.keys()}')
+
+
+    # none of these work
+    # example_map = [
+    #     [1, 1, 1, 1, 1],
+    #     [1, 1, 0, 1, 1],
+    #     [1, 1, 1, 1, 1]
+    # ]
+    # env = gym.make('PointMaze_UMaze-v3', maze_map=example_map)
+    # env = gym.make('maze2d-large-v1', maze_map=example_map)
+    # env = gym.make('maze2d-v1', maze_map=example_map)
+    # env = gym.make('MazeEnv', maze_map=example_map)
+    # env = gym.make('MazeEnv-v0', maze_map=example_map)
+
+    # this works
+    large_maze = generate_large_maze(n_maze_h=2, n_maze_w=2, maze_layout=maze_layout, overlap=overlap)
+    # small_maze_size -= (overlap * 2)
+
+    maze_spec = maze_map_to_maze_spec(large_maze)
+    # print('umaze', U_MAZE)
+    # print('large maze spec\n', maze_spec)
+    env = d4rl.pointmaze.maze_model.MazeEnv(maze_spec=maze_spec)
+
+    # gym.envs.registration.register(
+    #     id='gym_examples/MazeEnv-v0',
+    #     # entry_point='gym_examples.envs:GridWorldEnv',
+    #     entry_point=d4rl.pointmaze.maze_model.MazeEnv,
+    #     max_episode_steps=300,
+    # )
+
