@@ -111,6 +111,7 @@ class MuJoCoRenderer:
                 "[ utils/rendering ] Warning: could not initialize offscreen renderer"
             )
             self.viewer = None
+        self._plot_obs = True
 
     def pad_observation(self, observation):
         state = np.concatenate(
@@ -311,12 +312,14 @@ class MuJoCoRenderer:
 # ----------------------------------- maze2d ----------------------------------#
 # -----------------------------------------------------------------------------#
 
+# https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
+# width, height
 MAZE_BOUNDS = {
     "maze2d-umaze-v1": (0, 5, 0, 5),
     "maze2d-medium-v1": (0, 8, 0, 8),
     "maze2d-large-v1": (0, 9, 0, 12),
+    "maze2d-open-v0": (0, 5, 0, 7),
 }
-
 
 class MazeRenderer:
 
@@ -389,6 +392,7 @@ class Maze2dRenderer(MazeRenderer):
         self._background = self.env.maze_arr == 10
         self._remove_margins = False
         self._extent = (0, 1, 1, 0)
+        self._plot_obs = True
 
     def renders(self, observations, conditions=None, **kwargs):
         bounds = MAZE_BOUNDS[self.env_name]

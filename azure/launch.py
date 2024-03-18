@@ -4,7 +4,7 @@ import pdb
 from doodad.wrappers.easy_launch import sweep_function, save_doodad_config
 
 codepath = "/home/code"
-script = "scripts/train.py"
+script = "scripts/train_diffuser.py"
 
 
 def remote_fn(doodad_config, variant):

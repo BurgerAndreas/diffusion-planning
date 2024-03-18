@@ -3,7 +3,7 @@ import pdb
 
 """
 Test the object shape and types in the diffuser-maze2d training loop, without training.
-Modified from scripts/train.py
+Modified from scripts/train_diffuser.py
 """
 
 # -----------------------------------------------------------------------------#

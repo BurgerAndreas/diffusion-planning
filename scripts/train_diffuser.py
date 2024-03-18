@@ -8,8 +8,8 @@ import pdb
 
 
 class Parser(utils.Parser):
-    # maze2d_umaze_v1 maze2d_medium_v1 maze2d_large_v1
-    dataset: str = "maze2d-large-v1"
+    # maze2d-open-v0 maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1
+    dataset: str = "maze2d-open-v0"
     config: str = "config.maze2d"
 
 

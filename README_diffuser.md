@@ -25,7 +25,7 @@ pip install -e .
 
 Train a diffusion model with:
 ```
-python scripts/train.py --config config.maze2d --dataset maze2d-large-v1
+python scripts/train_diffuser.py --config config.maze2d --dataset maze2d-large-v1
 ```
 
 The default hyperparameters are listed in [`config/maze2d.py`](config/maze2d.py).
@@ -33,7 +33,7 @@ You can override any of them with runtime flags, eg `--batch_size 64`.
 
 Plan using the diffusion model with:
 ```
-python scripts/plan_maze2d.py --config config.maze2d --dataset maze2d-large-v1
+python scripts/run_diffuser_maze2d.py --config config.maze2d --dataset maze2d-large-v1
 ```
 
 
@@ -52,7 +52,7 @@ docker run -it --rm --gpus all \
     diffuser \
     bash -c \
     "export PYTHONPATH=$PYTHONPATH:/home/code && \
-    python /home/code/scripts/train.py --dataset hopper-medium-expert-v2 --logbase logs/docker"
+    python /home/code/scripts/train_diffuser.py --dataset hopper-medium-expert-v2 --logbase logs/docker"
 ```
 
 
@@ -78,7 +78,7 @@ docker image push ${DOCKER_USERNAME}/diffuser
 
 #### Usage
 
-Launch training jobs with `python azure/launch.py`. The launch script takes no command-line arguments; instead, it launches a job for every combination of hyperparameters in [`params_to_sweep`](azure/launch_train.py#L36-L38).
+Launch training jobs with `python azure/launch.py`. The launch script takes no command-line arguments; instead, it launches a job for every combination of hyperparameters in [`params_to_sweep`](azure/launch_train_diffuser.py#L36-L38).
 
 
 #### Viewing results

@@ -1,6 +1,6 @@
 """
 Inference / validation of diffusion-planner!
-First you need to train the diffuser by calling scripts/train.py
+First you need to train the diffuser by calling scripts/train_diffuser.py
 
 Idea:
 - Load the diffusion model (e.g. trained on maze2d-large-v1) as is, without any additional training
@@ -58,6 +58,20 @@ renderer._remove_margins = argsdp._remove_margins
 
 policy = Policy(diffusion, dataset.normalizer)
 
+# -------------------- load a second diffusion model for open env ----------------------#
+
+parser = Parser()
+parser.dataset = "maze2d-open-v0"
+args_open = parser.parse_args("plan")
+# load
+diffusion_experiment_open = utils.load_diffusion(
+    args_open.logbase, args_open.dataset, args_open.diffusion_loadpath, epoch=args_open.diffusion_epoch
+)
+diffusion_open = diffusion_experiment_open.ema
+dataset_open = diffusion_experiment_open.dataset
+
+policy_open = Policy(diffusion_open, dataset_open.normalizer)
+
 # ---------------------------------- main loop planner ----------------------------------#
 
 # TODO(Yifan): Construct a larger maze by concatenating multiple smaller mazes
@@ -111,8 +125,8 @@ else:
     assert len(waypoints) % 2 == 0
     num_steps = round(len(waypoints) / 2)
 
-small_maze = datasets.load_environment(args.dataset)
-print(f"Loaded environment {args.dataset}: {small_maze} (type: {type(small_maze)})")
+# small_maze = datasets.load_environment(args.dataset)
+# print(f"Loaded environment {args.dataset}: {small_maze} (type: {type(small_maze)})")
 
 # render the maze layout without any trajectory
 renderer._plot_obs = False

@@ -1,7 +1,15 @@
 # Planning in large domains with continuous diffusion and discrete planners
 Andreas Burger, Jack Sun, Yifan Ruan
 
-Go to `scripts/run_diffusion_planner.py`! (Work in progress)
+(Work in progress)
+Go to `scripts/run_diffusion_planner.py`! \
+
+Structure:
+- running diffusion planner: `scripts/run_diffusion_planner.py`
+- original diffuser: `scripts/train_diffuser.py` (to train) and `scripts/run_diffuser_maze2d.py` (to run)
+- original diffusion model: `diffuser/models/diffusion.py` and `diffuser/utils/training.py`
+- our large maze: `diffuser/planning/largemaze2d.py` 
+- our planner `diffuser/planning/planner.py`
 
 ### Installation
 
@@ -49,24 +57,24 @@ python scripts/run_diffusion_planner.py
 
 Original diffuser:
 ```bash
-# training
-python scripts/train.py --config config.maze2d --dataset maze2d-large-v1 # ~20h on RTX 3060
+# training # ~20h on RTX 3060
+python scripts/train_diffuser.py --config config.maze2d --dataset maze2d-large-v1 
 # inference
-python scripts/plan_maze2d.py --config config.maze2d --dataset maze2d-large-v1
+python scripts/run_diffuser_maze2d.py --config config.maze2d --dataset maze2d-large-v1
 ```
 
 ### Maze2d
 
 In this repo
-- Using the env: `scripts/plan_maze2d.py`
+- Using the env: `scripts/run_diffuser_maze2d.py`
 - Loading the env from d4rl: `diffuser/datasets/d4rl.py`
 - Rendering, maze size: `diffuser/utils/rendering.py`
 
 Outside this repo
 - [Documentation](https://robotics.farama.org/envs/maze/point_maze/)
 - [MazeEnv source code](https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py)
-- [How to create your own point maze env](https://github.com/Farama-Foundation/Minari/blob/fa9b2e8ed4bad7f2010819709ce74f0400a4acac/docs/tutorials/dataset_creation/point_maze_dataset.py#L6)
-- [How dataset was created](https://github.com/Farama-Foundation/D4RL/blob/master/scripts/generation/generate_maze2d_datasets.py)
+- [How to create your own point maze env from sratch](https://github.com/Farama-Foundation/Minari/blob/fa9b2e8ed4bad7f2010819709ce74f0400a4acac/docs/tutorials/dataset_creation/point_maze_dataset.py#L6) or [just a new maze layout](https://robotics.farama.org/envs/maze/point_maze/#custom-maze)
+- [How the dataset was created](https://github.com/Farama-Foundation/D4RL/blob/master/scripts/generation/generate_maze2d_datasets.py)
 
 ### Resources
 

@@ -15,7 +15,7 @@ class Parser(utils.Parser):
 
 """
 Perform inference. 
-First you need to train by calling scripts/train.py
+First you need to train by calling scripts/train_diffuser.py
 """
 
 # ---------------------------------- Extra arguments ----------------------------------#
