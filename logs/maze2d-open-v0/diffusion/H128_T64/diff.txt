@@ -1,0 +1,34 @@
+diff --git a/diffuser/utils/rendering.py b/diffuser/utils/rendering.py
+index a17d2ea..7ae3287 100644
+--- a/diffuser/utils/rendering.py
++++ b/diffuser/utils/rendering.py
+@@ -409,8 +409,12 @@ class MazeRenderer:
+ class Maze2dRenderer(MazeRenderer):
+ 
+     def __init__(self, env, observation_dim=None):
+-        self.env_name = env
+-        self.env = load_environment(env)
++        if type(env) is str:
++            self.env_name = env
++            self.env = load_environment(env)
++        else:
++            self.env = env
++            self.env_name = env.env_name
+         self.observation_dim = np.prod(self.env.observation_space.shape)
+         self.action_dim = np.prod(self.env.action_space.shape)
+         self.goal = None
+diff --git a/scripts/run_diffusion_planner.py b/scripts/run_diffusion_planner.py
+index ec7142f..375e35f 100644
+--- a/scripts/run_diffusion_planner.py
++++ b/scripts/run_diffusion_planner.py
+@@ -272,8 +272,9 @@ print(f"traj_wfillings.shape: {traj_wfillings.shape}")
+ # large maze env for better rendering
+ large_maze_size = large_maze.shape
+ large_env = maps.maze_to_gym_env(large_maze)
++large_env.env_name = 'maze2d-custom-v1'
+ 
+-renderer_large = copy.deepcopy(renderer)
++renderer_large = utils.Maze2dRenderer(large_env)
+ renderer_large._bounds = [0, large_maze_size[1], 0, large_maze_size[0]]
+ renderer_large.env_name = 'maze2d-custom-v1'
+ print(f"large_maze_size: {large_maze_size}")

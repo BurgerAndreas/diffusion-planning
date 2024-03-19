@@ -2,8 +2,9 @@ bin/
 logs/
 wandb/
 
-# allow for checkpoint
+# allow for checkpoints
 !logs/maze2d-large-v1/diffusion/H384_T256/sample-reference.png
+!logs/maze2d-large-v1/diffusion/H384_T256/_sample-reference.png
 !logs/maze2d-large-v1/diffusion/H384_T256/args.json
 !logs/maze2d-large-v1/diffusion/H384_T256/dataset_config.pkl
 !logs/maze2d-large-v1/diffusion/H384_T256/diff.txt
@@ -11,10 +12,12 @@ wandb/
 !logs/maze2d-large-v1/diffusion/H384_T256/model_config.pkl
 !logs/maze2d-large-v1/diffusion/H384_T256/render_config.pkl
 !logs/maze2d-large-v1/diffusion/H384_T256/trainer_config.pkl
+!logs/maze2d-large-v1/diffusion/H384_T256/state_1960000.pt
 !logs/maze2d-large-v1/diffusion/H384_T256/state_19600000.pt
 
 # open maze checkpoint
 !logs/maze2d-open-v0/diffusion/H128_T64/sample-reference.png
+!logs/maze2d-open-v0/diffusion/H128_T64/_sample-reference.png
 !logs/maze2d-open-v0/diffusion/H128_T64/args.json
 !logs/maze2d-open-v0/diffusion/H128_T64/dataset_config.pkl
 !logs/maze2d-open-v0/diffusion/H128_T64/diff.txt
@@ -22,10 +25,12 @@ wandb/
 !logs/maze2d-open-v0/diffusion/H128_T64/model_config.pkl
 !logs/maze2d-open-v0/diffusion/H128_T64/render_config.pkl
 !logs/maze2d-open-v0/diffusion/H128_T64/trainer_config.pkl
-!logs/maze2d-open-v0/diffusion/H128_T64/state_19600000.pt
+!logs/maze2d-open-v0/diffusion/H128_T64/state_160000.pt
+!logs/maze2d-open-v0/diffusion/H128_T64/state_1960000.pt
 
 # umaze checkpoint
 !logs/maze2d-umaze-v1/diffusion/H128_T64/sample-reference.png
+!logs/maze2d-umaze-v1/diffusion/H128_T64/_sample-reference.png
 !logs/maze2d-umaze-v1/diffusion/H128_T64/args.json
 !logs/maze2d-umaze-v1/diffusion/H128_T64/dataset_config.pkl
 !logs/maze2d-umaze-v1/diffusion/H128_T64/diff.txt
@@ -33,7 +38,7 @@ wandb/
 !logs/maze2d-umaze-v1/diffusion/H128_T64/model_config.pkl
 !logs/maze2d-umaze-v1/diffusion/H128_T64/render_config.pkl
 !logs/maze2d-umaze-v1/diffusion/H128_T64/trainer_config.pkl
-!logs/maze2d-umaze-v1/diffusion/H128_T64/state_19600000.pt
+!logs/maze2d-umaze-v1/diffusion/H128_T64/state_1960000.pt
 
 fuse.cfg
 
