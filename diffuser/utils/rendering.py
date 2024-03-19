@@ -358,14 +358,27 @@ class MazeRenderer:
         plt.title(title)
 
         if self._plot_grid:
+            if self._bounds is not None:
+                # plt.xlim(self._bounds[0], self._bounds[1])
+                # plt.ylim(self._bounds[2], self._bounds[3])
+                if len(self._bounds) == 2:
+                    xmax = self._bounds[1]
+                    ymax = self._bounds[0]
+                else:
+                    xmax = self._bounds[3]
+                    ymax = self._bounds[1]
+            else:
+                # default for maze2d-large-v1
+                xmax = 12
+                ymax = 9
             # v1
             # get the current axes
             ax = plt.gca()
             # print ax limits
             axmax = float(ax.get_xlim()[1]) # 1
             # Major ticks
-            xticks = np.arange(0, axmax, axmax/12)
-            yticks = np.arange(0, axmax, axmax/9)
+            xticks = np.arange(0, axmax, axmax/xmax)
+            yticks = np.arange(0, axmax, axmax/ymax)
             ax.set_xticks(xticks)
             ax.set_yticks(yticks)
             plt.grid(True, which="major", color="black", linestyle="--", linewidth=1)

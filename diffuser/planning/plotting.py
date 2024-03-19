@@ -27,7 +27,6 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
 
     # 255 white, 0 black, 100 gray
     wall_color = 127
-    pad3 = (0, 0)
 
     def add_outer_walls(images):
         # add_outer_walls, same thickness as the overlap
@@ -71,30 +70,32 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
     # save
     img_path = join(savepath, "global_traj_v1.png")
     imageio.imsave(img_path, images)
-    print(f'saving v1 to {img_path}')
+    print(f'Saving combined trajectory to {img_path}')
 
     # V2
-    total_image = np.tile(empty_img, (nrows, ncols, 1))
-    for img, (row, col) in global_traj_renderings:
-        if remove_overlap is not None:
-            img = img[remove_overlap[0]:-remove_overlap[0], remove_overlap[1]:-remove_overlap[1]]
-        total_image[
-            row * img.shape[0] : (row + 1) * img.shape[0],
-            col * img.shape[1] : (col + 1) * img.shape[1],
-        ] = img
-    total_image = add_outer_walls(total_image)
-    # save
-    img_path = join(savepath, "global_traj_v2.png")
-    imageio.imsave(img_path, total_image)
-    print(f'saving v2 to {img_path}')
+    # total_image = np.tile(empty_img, (nrows, ncols, 1))
+    # for img, (row, col) in global_traj_renderings:
+    #     if remove_overlap is not None:
+    #         img = img[remove_overlap[0]:-remove_overlap[0], remove_overlap[1]:-remove_overlap[1]]
+    #     total_image[
+    #         row * img.shape[0] : (row + 1) * img.shape[0],
+    #         col * img.shape[1] : (col + 1) * img.shape[1],
+    #     ] = img
+    # total_image = add_outer_walls(total_image)
+    # # save
+    # img_path = join(savepath, "global_traj_v2.png")
+    # imageio.imsave(img_path, total_image)
+    # print(f'Saving combined trajectory to {img_path}')
 
 
     # V3 (without any ordering)
     # global_traj_img = np.concatenate(global_traj_renderings, axis=0)
-    global_traj_img = np.concatenate([i for i, _ in global_traj_renderings], axis=0)
-    img_path = join(savepath, "global_traj_v3.png")
-    imageio.imsave(img_path, global_traj_img)
-    print(f'saving v3 to {img_path}')
+    # global_traj_img = np.concatenate([i for i, _ in global_traj_renderings], axis=0)
+    # img_path = join(savepath, "global_traj_v3.png")
+    # imageio.imsave(img_path, global_traj_img)
+    # print(f'Saving combined trajectory to {img_path}')
+
+    return images
 
 def render_maze_layout(renderer, savepath):
     # render the maze layout without any trajectory
