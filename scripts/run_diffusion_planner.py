@@ -18,6 +18,7 @@ import pdb
 import imageio
 from contextlib import contextmanager
 import sys, os
+import copy
 
 from diffuser.guides.policies import Policy
 import diffuser.datasets as datasets
@@ -59,38 +60,30 @@ args = Parser().parse_args("plan")
 args.dataset = args.dataset.split("-test")[0]
 
 # ---------------------------------- loading ----------------------------------#
+with suppress_stdout():
+    print('Loading diffusion model at', args.diffusion_loadpath)
+    diffusion_experiment = utils.load_diffusion(
+        args.logbase, args.dataset, args.diffusion_loadpath, epoch=args.diffusion_epoch
+    )
 
-print('Loading diffusion model at', args.diffusion_loadpath)
-diffusion_experiment = utils.load_diffusion(
-    args.logbase, args.dataset, args.diffusion_loadpath, epoch=args.diffusion_epoch
-)
+    diffusion = diffusion_experiment.ema
+    dataset = diffusion_experiment.dataset
+    renderer = diffusion_experiment.renderer
+    renderer._remove_margins = argsdp._remove_margins
 
-diffusion = diffusion_experiment.ema
-dataset = diffusion_experiment.dataset
-renderer = diffusion_experiment.renderer
-renderer._remove_margins = argsdp._remove_margins
-
-policy = Policy(diffusion, dataset.normalizer)
+    policy = Policy(diffusion, dataset.normalizer)
 
 # ---------------------------------- main loop planner ----------------------------------#
 
 # TODO(Yifan): Construct a larger maze by concatenating multiple smaller mazes
-# might be helful
-# https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
-# WALL = 10
-# EMPTY = 11
-# GOAL = 12
+    
 small_maze = datasets.load_environment(args.dataset)
 maze_layout = small_maze.maze_arr
 small_maze_size = maze_layout.shape
-print('maze layout\n', maze_layout)
-print('small maze size =', small_maze_size)
-
+print(f'small maze (size {small_maze_size})\n', maze_layout)
 
 large_maze = maps.generate_large_maze(maze_layout=maze_layout, n_maze_h=2, n_maze_w=2, overlap=argsdp.overlap, large_maze_outer_wall=argsdp.large_maze_outer_wall)
-print('large maze\n', large_maze)
-print('large maze size =', large_maze.shape)
-# small_maze_size -= (overlap * 2)
+print(f'large maze (size {large_maze.shape})\n', large_maze)
 
 # Maybe better: construct maze as a proper gym / mujoco env that we can render
 # via maze_spec https://github.com/Farama-Foundation/D4RL/blob/master/d4rl/pointmaze/maze_model.py
@@ -106,6 +99,7 @@ if waypoints is None:
     waypoints['global_start'] = argsdp.global_start
     waypoints['global_goal'] = argsdp.global_goal
 
+waypoints = [v for k, v in waypoints.items()]
 print(f"waypoints: {waypoints}")
 
 print(f'\nFinished planning!')
@@ -121,6 +115,7 @@ print(f'\nFinished planning!')
 # Idea 2: Instead we could let the mazes overlap a bit, 
 # so that a waypoint just inside the outer walls are actually at the boundary to the next maze
 
+conditions = [np.vstack(copy.deepcopy(waypoints))]
 if argsdp.overlapping_waypoint_pairs == True:
     num_steps = len(waypoints) - 1
 else:
@@ -132,24 +127,24 @@ else:
 
 traj_pieces = []
 traj_renderings = []
-waypoint_list = list(waypoints.keys())
 for step in range(num_steps):
 
     print(f"\nLocal traj {step + 1} of {num_steps}")
 
     if argsdp.overlapping_waypoint_pairs == True:
-        local_start_idx, local_goal_idx = waypoint_list[step], waypoint_list[step + 1]
+        local_start_idx, local_goal_idx = step, step + 1
     else:
         idx = 2 * step
-        if idx >= len(waypoint_list):
+        if idx >= len(waypoints):
             break
-        local_start_idx, local_goal_idx = waypoint_list[idx], waypoint_list[idx + 1]
-    local_start_gc, local_goal_gc = waypoints[local_start_idx], waypoints[local_goal_idx]
+        local_start_idx, local_goal_idx = idx, idx + 1
+    local_start_gc = copy.deepcopy(waypoints[local_start_idx])
+    local_goal_gc = copy.deepcopy(waypoints[local_goal_idx])
 
     # convert global coordinates to local coordinates
-    print(f"start: {local_start_gc} | goal: {local_goal_gc} (global coords)")
     local_start = maps.global_to_local(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
     local_goal = maps.global_to_local(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+    print(f"start: {local_start_gc} | goal: {local_goal_gc} (global coords)")
     print(f"       {local_start} |       {local_goal} (local coords)")
 
     coord_start = maps.get_maze_coord_from_global_pos(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
@@ -166,7 +161,8 @@ for step in range(num_steps):
     # local traj finished
 
 # convert trajectory so far to global coordinates
-print(f'\nConverting to global coordinates')
+print(f"\nFinished diffusing the trajectories!")
+print(f'Converting to global coordinates')
 traj_pieces_gc = []
 for _t, _c in traj_pieces:
     _t_c = []
@@ -177,9 +173,8 @@ for _t, _c in traj_pieces:
 
 # traj = np.vstack([p for p, _ in traj_pieces])
 traj = np.vstack(traj_pieces_gc)
-print(f"traj.shape: {traj.shape}")
+# print(f"Trajectory: {traj.shape}")
 
-print(f"\nFinished diffusing the trajectories!")
 
 # ---------------------------------- plotting ----------------------------------#
 import diffuser.planning.plotting as plots
@@ -226,7 +221,7 @@ with suppress_stdout():
 traj_w_filled = []
 # fill in the gap with maze2d-open-v0 diffuser
 for step in range(len(traj_pieces_gc) - 1):
-    print(f"\nLocal traj {step + 1} of {len(traj_pieces_gc) - 1}")
+    print(f"\Filling the gap {step + 1} of {len(traj_pieces_gc) - 1}")
 
     traj1, traj2 = traj_pieces_gc[step], traj_pieces_gc[step + 1]
     # make sure gap fits within the open maze size
@@ -244,7 +239,7 @@ for step in range(len(traj_pieces_gc) - 1):
 
     # generate a trajectory in the local maze
     rollout, rendering = dm.diffuse_trajectory(
-        local_start, local_goal, open_maze, diffusion_open, policy_open, renderer_open, args, argsdp
+        local_start, local_goal, open_maze, diffusion_open, policy_open, renderer_open, args, argsdp, saveplots=False
     )
     
     # # convert to global coordinates
@@ -253,7 +248,7 @@ for step in range(len(traj_pieces_gc) - 1):
     rollout += ltog
 
     # rollout: [time, obs_dim]
-    print('shapes', rollout.shape, local_traj1.shape, local_traj2.shape)
+    # print('shapes', local_traj1.shape, rollout.shape, local_traj2.shape)
     traj_w_filled.append(traj1)
     traj_w_filled.append(rollout)
     traj_w_filled.append(traj2)
@@ -267,25 +262,31 @@ import copy
 print(f'\nRendering the trajectory with fillings')
 
 traj_wfillings = np.vstack(traj_w_filled)
-print(f"traj_wfillings.shape: {traj_wfillings.shape}")
+print(f"Trajectory with gaps filled in: {traj_wfillings.shape}")
+print(f'  start: {traj_wfillings[0]} | goal: {traj_wfillings[-1]}')
 
 # large maze env for better rendering
 large_maze_size = large_maze.shape
 large_env = maps.maze_to_gym_env(large_maze)
+large_env.env_name = 'maze2d-custom-v1'
 
-renderer_large = copy.deepcopy(renderer)
-renderer_large._bounds = [0, large_maze_size[1], 0, large_maze_size[0]]
+renderer_large = utils.Maze2dRenderer(large_env)
+renderer_large._bounds = [0, large_maze_size[0], 0, large_maze_size[1]]
 renderer_large.env_name = 'maze2d-custom-v1'
-print(f"large_maze_size: {large_maze_size}")
 
 # render the maze layout without any trajectory
-maze_img = plots.render_maze_layout(renderer, args.savepath)
+# maze_img = plots.render_maze_layout(renderer_large, args.savepath)
 
 # render the discretized maze layout
-plots.render_discretized_maze_layout(renderer, args.savepath)
+# plots.render_discretized_maze_layout(renderer_large, args.savepath)
 
 img = renderer_large.composite(
     join(args.savepath, "trajectory_wfillings.png"), traj_wfillings[None], ncol=1, #conditions=conditions
+)
+
+# print(f"conditions: {conditions}")
+img = renderer_large.composite(
+    join(args.savepath, "trajectory_wfillings_waypoints.png"), traj_wfillings[None], ncol=1, conditions=conditions
 )
 
 # plots.render_traj(traj_renderings, args.savepath, empty_img=maze_img, remove_overlap=argsdp.remove_img_margins, add_outer_walls=argsdp.large_maze_outer_wall)

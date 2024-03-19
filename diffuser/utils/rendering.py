@@ -382,7 +382,7 @@ class MazeRenderer:
         img = plot2img(fig, remove_margins=self._remove_margins)
         return img
 
-    def composite(self, savepath, paths, ncol=5, **kwargs):
+    def composite(self, savepath, paths, ncol=5, saveplots=True, **kwargs):
         """
         savepath : str
         observations : [ n_paths x horizon x 2 ]
@@ -401,16 +401,21 @@ class MazeRenderer:
         images = einops.rearrange(
             images, "(nrow ncol) H W C -> (nrow H) (ncol W) C", nrow=nrow, ncol=ncol
         )
-        imageio.imsave(savepath, images)
-        print(f"Saved {len(paths)} samples to: {savepath}")
+        if saveplots:
+            imageio.imsave(savepath, images)
+            print(f"Saved {len(paths)} samples to: {savepath}")
         return images
 
 
 class Maze2dRenderer(MazeRenderer):
 
     def __init__(self, env, observation_dim=None):
-        self.env_name = env
-        self.env = load_environment(env)
+        if type(env) is str:
+            self.env_name = env
+            self.env = load_environment(env)
+        else:
+            self.env = env
+            self.env_name = env.env_name
         self.observation_dim = np.prod(self.env.observation_space.shape)
         self.action_dim = np.prod(self.env.action_space.shape)
         self.goal = None

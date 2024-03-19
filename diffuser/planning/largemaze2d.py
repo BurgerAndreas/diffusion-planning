@@ -250,8 +250,8 @@ def global_to_local_openmaze(global_traj1, global_traj2, open_maze_size):
     # convert global pos to local
     local_pos1 = global_pos1 + gtol
     local_pos2 = global_pos2 + gtol
-    print(f'global_pos1 = {global_pos1} | global_pos2 = {global_pos2}')
-    print(f'midpoint = {mid_g} | gtol = {gtol} | local_pos1 = {local_pos1} | local_pos2 = {local_pos2}')
+    # print(f'global_pos1 = {global_pos1} | global_pos2 = {global_pos2}')
+    # print(f'midpoint = {mid_g} | gtol = {gtol} | local_pos1 = {local_pos1} | local_pos2 = {local_pos2}')
     # convert whole trajectory to local
     local_traj1 = global_traj1 + gtol
     local_traj2 = global_traj2 + gtol

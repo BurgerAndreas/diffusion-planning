@@ -16,7 +16,7 @@ based on main loop from diffuser/scripts/run_maze2d.py
 """
 
 
-def diffuse_trajectory(start, goal, maze, diffusion, policy, renderer, args, argsdp):
+def diffuse_trajectory(start, goal, maze, diffusion, policy, renderer, args, argsdp, saveplots=True):
     # initial observation includes small non-zero velocity
     # observation = maze.reset()
 
@@ -31,7 +31,7 @@ def diffuse_trajectory(start, goal, maze, diffusion, policy, renderer, args, arg
     observation = maze.reset_to_location(start)
     maze.set_target(target_location=goal)
     
-    print(f"Initial observation: {observation}")
+    # print(f"Initial observation: {observation}")
 
     ## set conditioning xy position to be the goal (inpainting)
     target = maze._target
@@ -39,7 +39,7 @@ def diffuse_trajectory(start, goal, maze, diffusion, policy, renderer, args, arg
         # set velocity to [0, 0]
         diffusion.horizon - 1: np.array([*target, 0, 0]),
     }
-    print(f"target: {target} | cond: {cond}")
+    # print(f"target: {target} | cond: {cond}")
 
     ## observations for rendering
     rollout = [observation.copy()]
@@ -126,13 +126,13 @@ def diffuse_trajectory(start, goal, maze, diffusion, policy, renderer, args, arg
                 conditions = [None]
 
             if t == 0:
-                renderer.composite(fullpath, samples.observations, ncol=1, conditions=conditions)
+                renderer.composite(fullpath, samples.observations, ncol=1, conditions=conditions, saveplots=saveplots)
 
             # renderer.render_plan(join(args.savepath, f'{t}_plan.mp4'), samples.actions, samples.observations, state)
 
             ## save rollout thus far
             img = renderer.composite(
-                join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1, conditions=conditions
+                join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1, conditions=conditions, saveplots=saveplots
             )
             if terminal or (t == maze.max_episode_steps - 1):
                 # _coords = maps.get_maze_coord_from_global_pos(goal_gc, maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
