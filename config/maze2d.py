@@ -152,8 +152,8 @@ maze2d_umaze_v1 = {
     },
 }
 
-# maze2d-open-v1
-maze2d_open_v1 = {
+# maze2d-open-v1 H256_T256
+maze2d_open_v0 = {
     **maze2d_umaze_v1,
 }
 

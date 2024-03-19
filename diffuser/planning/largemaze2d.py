@@ -6,6 +6,19 @@ import d4rl
 
 from typing import Tuple, List, Dict, Any, Union, Optional, Sequence, Iterable
 
+from contextlib import contextmanager
+import sys, os
+
+@contextmanager
+def suppress_stdout():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:  
+            yield
+        finally:
+            sys.stdout = old_stdout
+
 
 # from `diffuser/utils/rendering.py`: 
 MAZE_BOUNDS = {
@@ -163,7 +176,6 @@ def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=F
         f'local_pos: {local_pos} (from global_pos: {global_pos}) and maze_size: {maze_size} and overlap: {overlap}'
     return local_pos
 
-# TODO(Andreas): test this
 def local_to_global(local_pos, maze_coord, maze_size, overlap=None, large_maze_outer_wall=False):
     """Convert local position (small maze) to global position (large maze).
     Reverse of `global_to_local`.
@@ -191,11 +203,11 @@ def local_to_global(local_pos, maze_coord, maze_size, overlap=None, large_maze_o
     global_pos = np.zeros(2, dtype=float)
     if overlap is not None:
         small_maze_wo_walls = maze_size - (overlap * 2)
-        global_pos[0] = local_pos[0] * small_maze_wo_walls[0] * maze_coord[0]
-        global_pos[1] = local_pos[1] * small_maze_wo_walls[1] * maze_coord[1]
+        global_pos[0] = local_pos[0] + (small_maze_wo_walls[0] * maze_coord[0])
+        global_pos[1] = local_pos[1] + (small_maze_wo_walls[1] * maze_coord[1])
     else:
-        global_pos[0] = local_pos[0] * maze_size[0] * maze_coord[0]
-        global_pos[1] = local_pos[1] * maze_size[1]
+        global_pos[0] = local_pos[0] + (maze_size[0] * maze_coord[0])
+        global_pos[1] = local_pos[1] + (maze_size[1] * maze_coord[1])
 
     # add outer wall
     if large_maze_outer_wall is True:
@@ -209,22 +221,43 @@ def global_to_local_openmaze(global_traj1, global_traj2, open_maze_size):
     """Convert global positions (large maze) to local positions (small maze).
     Takes in pieces of trajectories.
     Local frame tries to put the midpoint between the two global trajectories in the center of the open maze.
+
+    Args:
+    - global_traj1: [global_pos1, ..., global_posN]
+
+    Usage:
+        ltraj1, ltraj2, ltog_offset = global_to_local_openmaze(gtraj1, gtraj2, open_maze_size)
+        ltraj1 == gtraj1 - ltog # True
+        gtraj1 == ltraj1 + ltog # True
     """
     # just take the enpoints for now
-    global_pos1 = global_traj1[-1]
-    global_pos2 = global_traj2[0]
-    # find the midpoint
-    midpoint = (global_pos1 + global_pos2) / 2
-    mid_gc = midpoint + global_pos1
+    if global_traj1.ndim > 1:
+        global_pos1 = global_traj1[-1]
+    else:
+        global_pos1 = global_traj1
+    if global_traj2.ndim > 1:
+        global_pos2 = global_traj2[0]
+    else:
+        global_pos2 = global_traj2
+    # find the midpoint (in global frame)
+    mid_g = (global_pos1 + global_pos2) / 2
+    # mid_g = np.zeros_like(global_pos1) 
+    # mid_g[0] = (global_pos1[0] + global_pos2[0]) / 2
+    # mid_g[1] = (global_pos1[1] + global_pos2[1]) / 2
+    # enforce that the midpoint is in the center of the open maze
+    open_maze_center = np.asarray(open_maze_size) / 2
+    gtol = open_maze_center - mid_g
     # convert global pos to local
-    local_pos1 = mid_gc - global_pos1 + midpoint
-    local_pos2 = mid_gc - global_pos2 + midpoint
+    local_pos1 = global_pos1 + gtol
+    local_pos2 = global_pos2 + gtol
     print(f'global_pos1 = {global_pos1} | global_pos2 = {global_pos2}')
-    print(f'midpoint = {midpoint} | mid_gc = {mid_gc} | local_pos1 = {local_pos1} | local_pos2 = {local_pos2}')
+    print(f'midpoint = {mid_g} | gtol = {gtol} | local_pos1 = {local_pos1} | local_pos2 = {local_pos2}')
     # convert whole trajectory to local
-    local_traj1 = global_traj1 - (global_pos1 + midpoint).repeat(global_traj1.shape[0], axis=0)
-    local_traj2 = global_traj2 - (global_pos2 + midpoint).repeat(global_traj2.shape[0], axis=0)
-    return local_traj1, local_traj2
+    local_traj1 = global_traj1 + gtol
+    local_traj2 = global_traj2 + gtol
+    # local to global: glob = local + ltog
+    ltog = -gtol
+    return local_traj1, local_traj2, ltog
 
 
 def get_maze_coord_from_global_pos(global_pos, maze_size, overlap=None, large_maze_outer_wall=False):
@@ -268,6 +301,26 @@ if __name__ == "__main__":
     pos_loc1 = global_to_local(pos1, small_maze_size, overlap)
     # need to add one for the removed wall
     assert np.allclose(pos_loc1, np.array([1, 1])), f'pos_loc1: {pos_loc1}'
+
+    ######################################################################
+
+    local_pos = np.array([1, 1])
+    maze_coord = np.array([0, 0])
+    maze_size = np.array([9, 12])
+    gpos = local_to_global(local_pos, maze_coord, maze_size, overlap=None, large_maze_outer_wall=False)
+    assert np.allclose(gpos, np.array([1, 1])), f'gpos: {gpos}'
+
+    local_pos = np.array([1, 1])
+    maze_coord = np.array([1, 1])
+    maze_size = np.array([9, 12])
+    gpos = local_to_global(local_pos, maze_coord, maze_size, overlap=None, large_maze_outer_wall=False)
+    assert np.allclose(gpos, np.array([10, 13])), f'gpos: {gpos}'
+
+    local_pos = np.array([1, 1])
+    maze_coord = np.array([0, 0])
+    maze_size = np.array([9, 12])
+    gpos = local_to_global(local_pos, maze_coord, maze_size, overlap=overlap, large_maze_outer_wall=False)
+    assert np.allclose(gpos, np.array([0, 0])), f'gpos: {gpos}'
 
     ######################################################################
     # try to build large maze gym env

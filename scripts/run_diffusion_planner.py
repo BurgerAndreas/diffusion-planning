@@ -16,6 +16,8 @@ import numpy as np
 from os.path import join
 import pdb
 import imageio
+from contextlib import contextmanager
+import sys, os
 
 from diffuser.guides.policies import Policy
 import diffuser.datasets as datasets
@@ -23,6 +25,18 @@ import diffuser.utils as utils
 
 import diffuser.planning.planner as plan
 import diffuser.planning.largemaze2d as maps
+import diffuser.planning.diffusing as dm
+
+
+@contextmanager
+def suppress_stdout():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:  
+            yield
+        finally:
+            sys.stdout = old_stdout
 
 class Parser(utils.Parser):
     # maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1
@@ -57,21 +71,6 @@ renderer = diffusion_experiment.renderer
 renderer._remove_margins = argsdp._remove_margins
 
 policy = Policy(diffusion, dataset.normalizer)
-
-# -------------------- load a second diffusion model for open env ----------------------#
-
-# parser = Parser()
-# parser.dataset = "maze2d-open-v0"
-# args_open = parser.parse_args("plan")
-# args_open.dataset = "maze2d-open-v0"
-
-# diffusion_experiment_open = utils.load_diffusion(
-#     args_open.logbase, args_open.dataset, args_open.diffusion_loadpath, epoch=args_open.diffusion_epoch
-# )
-# diffusion_open = diffusion_experiment_open.ema
-# dataset_open = diffusion_experiment_open.dataset
-
-# policy_open = Policy(diffusion_open, dataset_open.normalizer)
 
 # ---------------------------------- main loop planner ----------------------------------#
 
@@ -136,7 +135,7 @@ traj_renderings = []
 waypoint_list = list(waypoints.keys())
 for step in range(num_steps):
 
-    print(f"\nLocal traj {step} of {num_steps}")
+    print(f"\nLocal traj {step + 1} of {num_steps}")
 
     if argsdp.overlapping_waypoint_pairs == True:
         local_start_idx, local_goal_idx = waypoint_list[step], waypoint_list[step + 1]
@@ -157,295 +156,35 @@ for step in range(num_steps):
     coord_goal = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
     assert np.allclose(coord_start, coord_goal), f"start and goal should be in the same maze, but are {coord_start} and {coord_goal}"
 
-
-    # initial observation includes small non-zero velocity
-    # observation = small_maze.reset()
-
-    # if args.conditional:
-    #     print("Resetting target to random value")
-    #     small_maze.set_target(target_location=None)
-
-    # TODO(Andreas): modify to take in waypoints from planner
-    # Set the start and goal locations in the maze env
-    # For the diffusion we only need to set the conditioning,
-    # but we need the maze for rendering, reward, and terminal checks
-    observation = small_maze.reset_to_location(local_start)
-    small_maze.set_target(target_location=local_goal)
-    
-    print(f"Initial observation: {observation}")
-
-    ## set conditioning xy position to be the goal (inpainting)
-    target = small_maze._target
-    cond = {
-        # set velocity to [0, 0]
-        diffusion.horizon - 1: np.array([*target, 0, 0]),
-    }
-    print(f"target: {target} | cond: {cond}")
-
-    ## observations for rendering
-    rollout = [observation.copy()]
-
-    total_reward = 0
-    for t in range(small_maze.max_episode_steps):
-
-        state = small_maze.state_vector().copy()
-        # print(f"t: {t} | state: {state}")
-
-        ## can replan if desired, but the open-loop plans are good enough for maze2d
-        ## that we really only need to plan once
-        if t == 0:
-            # set the starting point to be the initial obs (inpainting)
-            cond[0] = observation
-
-            # plan for the entire horizon, rest of the episode
-            action, samples = policy(cond, batch_size=args.batch_size)
-            actions = samples.actions[0]
-            sequence = samples.observations[0]
-            # print(f"t: {t} | action: {state}")
-
-        # pdb.set_trace()
-
-        # ####
-        if t < len(sequence) - 1:
-            next_waypoint = sequence[t + 1]
-        else:
-            # if we've reached the end of the sequence, just stay put
-            next_waypoint = sequence[-1].copy()
-            next_waypoint[2:] = 0
-            # pdb.set_trace()
-
-        ## can use actions or define a simple controller based on state predictions
-        # action = x_t+1 - x_t + (v_t+1 - v_t)
-        # force ~ acceleration = dx + dv
-        action = next_waypoint[:2] - state[:2] + (next_waypoint[2:] - state[2:])
-        # pdb.set_trace()
-        ####
-
-        # else:
-        #     actions = actions[1:]
-        #     if len(actions) > 1:
-        #         action = actions[0]
-        #     else:
-        #         # action = np.zeros(2)
-        #         action = -state[2:]
-        #         pdb.set_trace()
-
-        next_observation, reward, terminal, _ = small_maze.step(action)
-        total_reward += reward
-        score = small_maze.get_normalized_score(total_reward)
-        # print(
-        #     f"t: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | "
-        #     f"{action}"
-        # )
-
-        if "maze2d" in args.dataset:
-            xy = next_observation[:2]
-            goal = small_maze.unwrapped._target
-            # print(f"maze | pos: {xy} | goal: {goal}")
-
-        ## update rollout observations
-        rollout.append(next_observation.copy())
-
-        # logger.log(score=score, step=t)
-
-        if argsdp.terminate_if_stuck and t > 10:
-            if np.allclose([np.array(o) for o in rollout[-10:]], atol=1e-2):
-                print(f"Stuck at step {t} | R: {total_reward:.2f} | score: {score:.4f}")
-                break
-
-        if argsdp.terminate_at_reward and reward > 0:
-            terminal = True
-            print(f"Reached reward at step {t} | R: {total_reward:.2f} | score: {score:.4f}")
-
-        if (t % args.vis_freq == 0) or terminal or (t == small_maze.max_episode_steps - 1):
-            fullpath = join(args.savepath, f"{t}.png")
-
-            if argsdp.plot_conditioning:
-                # make conditions into an array with the same length as the number of samples
-                conditions = [np.stack(list(cond.values()))]
-            else:
-                conditions = [None]
-
-            if t == 0:
-                renderer.composite(fullpath, samples.observations, ncol=1, conditions=conditions)
-
-            # renderer.render_plan(join(args.savepath, f'{t}_plan.mp4'), samples.actions, samples.observations, state)
-
-            ## save rollout thus far
-            img = renderer.composite(
-                join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1, conditions=conditions
-            )
-            if terminal or (t == small_maze.max_episode_steps - 1):
-                _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-                traj_renderings.append((img, _coords))
-                print(f'Appended img to global_traj_renderings (size {img.shape}, coords {_coords})')
-
-            # renderer.render_rollout(join(args.savepath, f'rollout.mp4'), rollout, fps=80)
-
-            # logger.video(rollout=join(args.savepath, f'rollout.mp4'), plan=join(args.savepath, f'{t}_plan.mp4'), step=t)
-
-        if terminal:
-            break
-
-        observation = next_observation
-
-    # logger.finish(t, env.max_episode_steps, score=score, value=0)
-
-    ## save result as a json file
-    # json_path = join(args.savepath, "rollout.json")
-    # json_data = {
-    #     "score": score,
-    #     "step": t,
-    #     "return": total_reward,
-    #     "term": terminal,
-    #     "epoch_diffusion": diffusion_experiment.epoch,
-    # }
-    # json.dump(json_data, open(json_path, "w"), indent=2, sort_keys=True)
+    # generate a trajectory in the local maze
+    rollout, rendering = dm.diffuse_trajectory(local_start, local_goal, small_maze, diffusion, policy, renderer, args, argsdp)
 
     # rollout: [time, obs_dim]
     _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
     traj_pieces.append((np.array(rollout), _coords))
+    traj_renderings.append((rendering, _coords))
     # local traj finished
 
-print(f"\nFinished diffusing the trajectories!")
-
-# ---------------------------------- fill in the gaps ----------------------------------#
-# TODO(Andreas) fill in the gaps with maze2d-open-v0 diffuser
-
-# convert to global coordinates
+# convert trajectory so far to global coordinates
 print(f'\nConverting to global coordinates')
 traj_pieces_gc = []
 for _t, _c in traj_pieces:
-    print('traj local:', len(_t), _t.shape, f'coords: {_c}')
     _t_c = []
     for _p in _t:
         _p_c = maps.local_to_global(_p, _c, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall) 
         _t_c.append(_p_c)
     traj_pieces_gc.append(np.vstack(_t_c))
-    print(' global:', len(traj_pieces_gc[-1]), traj_pieces_gc[-1].shape)
-print(f"traj_pieces_gc: {len(traj_pieces_gc)} of shape={traj_pieces_gc[0].shape}")
 
 # traj = np.vstack([p for p, _ in traj_pieces])
 traj = np.vstack(traj_pieces_gc)
 print(f"traj.shape: {traj.shape}")
 
-# # fill in the gap with maze2d-open-v0 diffuser
-# open_maze_size = np.array([5, 7])
-# for step in range(len(traj_pieces_gc)):
-#     traj1, traj2 = traj_pieces_gc[step], traj_pieces_gc[step + 1]
-#     # make sure gap fits within the open maze size
-#     assert np.all(np.abs(traj1[-1] - traj2[0]) <  open_maze_size), f"traj1[-1]: {traj1[-1]} | traj2[0]: {traj2[0]}"
-#     # transform to local coordinates
-#     local_traj1, local_traj2 = maps.global_to_local_openmaze(traj1, traj2, open_maze_size)
-
-#     # set conditioning xy position to be the goal (inpainting)
-#     local_goal = local_traj2[0]
-#     target = local_goal
-#     cond = {
-#         # set velocity to [0, 0]
-#         diffusion_open.horizon - 1: np.array([*target, 0, 0]),
-#     }
-
-#     local_start = local_traj1[-1]
-#     observation = open_maze.reset_to_location(local_start)
-#     open_maze.set_target(target_location=local_goal)
-
-#     # same loop as above
-#     # observations for rendering
-#     rollout = [observation.copy()]
-
-#     total_reward = 0
-#     for t in range(small_maze.max_episode_steps):
-
-#         state = small_maze.state_vector().copy()
-#         # print(f"t: {t} | state: {state}")
-
-#         ## can replan if desired, but the open-loop plans are good enough for maze2d
-#         ## that we really only need to plan once
-#         if t == 0:
-#             # set the starting point to be the initial obs (inpainting)
-#             cond[0] = observation
-
-#             # plan for the entire horizon, rest of the episode
-#             action, samples = policy(cond, batch_size=args.batch_size)
-#             actions = samples.actions[0]
-#             sequence = samples.observations[0]
-#             # print(f"t: {t} | action: {state}")
-
-
-#         if t < len(sequence) - 1:
-#             next_waypoint = sequence[t + 1]
-#         else:
-#             # if we've reached the end of the sequence, just stay put
-#             next_waypoint = sequence[-1].copy()
-#             next_waypoint[2:] = 0
-
-#         ## can use actions or define a simple controller based on state predictions
-#         # action = x_t+1 - x_t + (v_t+1 - v_t)
-#         # force ~ acceleration = dx + dv
-#         action = next_waypoint[:2] - state[:2] + (next_waypoint[2:] - state[2:])
-
-#         next_observation, reward, terminal, _ = small_maze.step(action)
-#         total_reward += reward
-#         score = small_maze.get_normalized_score(total_reward)
-#         # print(
-#         #     f"t: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | "
-#         #     f"{action}"
-#         # )
-
-#         if "maze2d" in args.dataset:
-#             xy = next_observation[:2]
-#             goal = small_maze.unwrapped._target
-#             # print(f"maze | pos: {xy} | goal: {goal}")
-
-#         ## update rollout observations
-#         rollout.append(next_observation.copy())
-
-#         # logger.log(score=score, step=t)
-
-#         if argsdp.terminate_if_stuck and t > 10:
-#             if np.allclose([np.array(o) for o in rollout[-10:]], atol=1e-2):
-#                 print(f"Stuck at step {t} | R: {total_reward:.2f} | score: {score:.4f}")
-#                 break
-
-#         if argsdp.terminate_at_reward and reward > 0:
-#             terminal = True
-#             print(f"Reached reward at step {t} | R: {total_reward:.2f} | score: {score:.4f}")
-
-#         if (t % args.vis_freq == 0) or terminal or (t == small_maze.max_episode_steps - 1):
-#             fullpath = join(args.savepath, f"{t}.png")
-
-#             if argsdp.plot_conditioning:
-#                 # make conditions into an array with the same length as the number of samples
-#                 conditions = [np.stack(list(cond.values()))]
-#             else:
-#                 conditions = [None]
-
-#             if t == 0:
-#                 renderer.composite(fullpath, samples.observations, ncol=1, conditions=conditions)
-
-#             ## save rollout thus far
-#             img = renderer.composite(
-#                 join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1, conditions=conditions
-#             )
-#             if terminal or (t == small_maze.max_episode_steps - 1):
-#                 _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-#                 traj_renderings.append((img, _coords))
-#                 print(f'Appended img to global_traj_renderings (size {img.shape}, coords {_coords})')
-
-#         if terminal:
-#             break
-
-#         observation = next_observation
-
-#     # rollout: [time, obs_dim]
-#     # _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-#     # traj_pieces.append((np.array(rollout), _coords))
-#     # local traj finished
-
+print(f"\nFinished diffusing the trajectories!")
 
 # ---------------------------------- plotting ----------------------------------#
 import diffuser.planning.plotting as plots
+
+print(f'\nRendering the trajectory')
 
 # render the maze layout without any trajectory
 maze_img = plots.render_maze_layout(renderer, args.savepath)
@@ -453,11 +192,103 @@ maze_img = plots.render_maze_layout(renderer, args.savepath)
 # render the discretized maze layout
 plots.render_discretized_maze_layout(renderer, args.savepath)
 
-# TODO(Andreas) add outer walls
 plots.render_traj(traj_renderings, args.savepath, empty_img=maze_img, remove_overlap=argsdp.remove_img_margins, add_outer_walls=argsdp.large_maze_outer_wall)
 # TODO(Andreas) plot again without trajectory but with constraints (waypoints)
 # TODO(Andreas) plot again without trajectory but discretized and with start, end constraint (waypoints)
 
 
+
+# -------------------- fill in the gaps with a second diffusion model for open env ----------------------#
+# fill in the gaps with maze2d-open-v0 diffuser
+
+with suppress_stdout():
+    class ParserOpen(utils.Parser):
+        config: str = "config.maze2d"
+        dataset: str = "maze2d-open-v0"
+
+    args_open = ParserOpen().parse_args("plan")
+    args_open.dataset = "maze2d-open-v0"
+
+    diffusion_experiment_open = utils.load_diffusion(
+        args_open.logbase, args_open.dataset, args_open.diffusion_loadpath, epoch=args_open.diffusion_epoch
+    )
+    diffusion_open = diffusion_experiment_open.ema
+    dataset_open = diffusion_experiment_open.dataset
+    renderer_open = diffusion_experiment_open.renderer
+    renderer_open._remove_margins = argsdp._remove_margins
+
+    policy_open = Policy(diffusion_open, dataset_open.normalizer)
+
+    open_maze = datasets.load_environment(args_open.dataset)
+    open_maze_layout = open_maze.maze_arr
+    open_maze_size = open_maze_layout.shape
+
+traj_w_filled = []
+# fill in the gap with maze2d-open-v0 diffuser
+for step in range(len(traj_pieces_gc) - 1):
+    print(f"\nLocal traj {step + 1} of {len(traj_pieces_gc) - 1}")
+
+    traj1, traj2 = traj_pieces_gc[step], traj_pieces_gc[step + 1]
+    # make sure gap fits within the open maze size
+    assert np.all(np.abs(traj1[-1] - traj2[0]) <  open_maze_size), f"traj1[-1]: {traj1[-1]} | traj2[0]: {traj2[0]}"
+    
+    # transform to local coordinates
+    local_traj1, local_traj2, ltog = maps.global_to_local_openmaze(traj1, traj2, open_maze_size)
+
+    # set boundary conditions (optionally add more constraints)
+    local_start = local_traj1[-1]
+    local_goal = local_traj2[0]
+
+    # print(f'start: {traj1[-1]} | goal: {traj2[0]} (global coords)')
+    # print(f'       {local_start} |       {local_goal} (local open coords)')
+
+    # generate a trajectory in the local maze
+    rollout, rendering = dm.diffuse_trajectory(
+        local_start, local_goal, open_maze, diffusion_open, policy_open, renderer_open, args, argsdp
+    )
+    
+    # # convert to global coordinates
+    rollout = np.asarray(rollout)
+    rollout = rollout[:, :2] 
+    rollout += ltog
+
+    # rollout: [time, obs_dim]
+    print('shapes', rollout.shape, local_traj1.shape, local_traj2.shape)
+    traj_w_filled.append(traj1)
+    traj_w_filled.append(rollout)
+    traj_w_filled.append(traj2)
+
+print(f"\nFinished diffusing the trajectories!")
+
+# ---------------------------------- plotting ----------------------------------#
+import diffuser.planning.plotting as plots
+import copy
+
+print(f'\nRendering the trajectory with fillings')
+
+traj_wfillings = np.vstack(traj_w_filled)
+print(f"traj_wfillings.shape: {traj_wfillings.shape}")
+
 # large maze env for better rendering
+large_maze_size = large_maze.shape
 large_env = maps.maze_to_gym_env(large_maze)
+
+renderer_large = copy.deepcopy(renderer)
+renderer_large._bounds = [0, large_maze_size[1], 0, large_maze_size[0]]
+renderer_large.env_name = 'maze2d-custom-v1'
+print(f"large_maze_size: {large_maze_size}")
+
+# render the maze layout without any trajectory
+maze_img = plots.render_maze_layout(renderer, args.savepath)
+
+# render the discretized maze layout
+plots.render_discretized_maze_layout(renderer, args.savepath)
+
+img = renderer_large.composite(
+    join(args.savepath, "trajectory_wfillings.png"), traj_wfillings[None], ncol=1, #conditions=conditions
+)
+
+# plots.render_traj(traj_renderings, args.savepath, empty_img=maze_img, remove_overlap=argsdp.remove_img_margins, add_outer_walls=argsdp.large_maze_outer_wall)
+
+
+

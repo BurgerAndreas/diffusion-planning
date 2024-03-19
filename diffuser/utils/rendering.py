@@ -332,6 +332,7 @@ class MazeRenderer:
         self._extent = (0, 1, 1, 0)
         self._plot_obs = True
         self._plot_grid = False
+        self._bounds = None
 
     def renders(self, observations, conditions=None, title=None):
         plt.clf()
@@ -418,9 +419,13 @@ class Maze2dRenderer(MazeRenderer):
         self._extent = (0, 1, 1, 0)
         self._plot_obs = True
         self._plot_grid = False
+        self._bounds = None
 
     def renders(self, observations, conditions=None, **kwargs):
-        bounds = MAZE_BOUNDS[self.env_name]
+        if self._bounds is None:
+            bounds = MAZE_BOUNDS[self.env_name]
+        else:
+            bounds = self._bounds
 
         observations = observations + 0.5
         if len(bounds) == 2:

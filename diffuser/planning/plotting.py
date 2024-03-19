@@ -22,15 +22,25 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
 
     # img_sample = global_traj_renderings[0][0]
     # wall_color = img_sample[0, 0] # [127 127 127 255]
-    # pad3 = (0, 0, 0, 0)
 
     # wall_color = [127, 127, 127]
-    # pad3 = (0, 0, 0)
 
     # 255 white, 0 black, 100 gray
     wall_color = 127
     pad3 = (0, 0)
 
+    def add_outer_walls(images):
+        # add_outer_walls, same thickness as the overlap
+        if add_outer_walls is True:
+            # e.g. (776, 832, 4) -> (888, 916, 4)
+            # print(f'shape before padding: {images.shape}')
+            images = np.pad(images, ((remove_overlap[0], remove_overlap[0]), (remove_overlap[1], remove_overlap[1]), (0,0)), mode='constant', constant_values=wall_color)
+            # print(f'shape after padding: {images.shape}')
+            images[:remove_overlap[0], :, -1] = 255
+            images[-remove_overlap[0]:, :, -1] = 255
+            images[:, :remove_overlap[1], -1] = 255
+            images[:, -remove_overlap[1]:, -1] = 255
+        return images
 
     if empty_img is None:
         img_sample = global_traj_renderings[0][0]
@@ -57,11 +67,7 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
     images = einops.rearrange(
         images, "(nrow ncol) H W C -> (nrow H) (ncol W) C", nrow=nrows, ncol=ncols
     )
-    # add_outer_walls, same thickness as the overlap
-    if add_outer_walls is True:
-        print(f'shape before padding: {images.shape}')
-        images = np.pad(images, ((remove_overlap[0], remove_overlap[0]), (remove_overlap[1], remove_overlap[1]), pad3), mode='constant', constant_values=wall_color)
-        print(f'shape after padding: {images.shape}')
+    images = add_outer_walls(images)
     # save
     img_path = join(savepath, "global_traj_v1.png")
     imageio.imsave(img_path, images)
@@ -76,8 +82,7 @@ def render_traj(global_traj_renderings, savepath, empty_img=None, remove_overlap
             row * img.shape[0] : (row + 1) * img.shape[0],
             col * img.shape[1] : (col + 1) * img.shape[1],
         ] = img
-    if add_outer_walls is True:
-        total_image = np.pad(total_image, ((remove_overlap[0], remove_overlap[0]), (remove_overlap[1], remove_overlap[1]), pad3), mode='constant', constant_values=wall_color)
+    total_image = add_outer_walls(total_image)
     # save
     img_path = join(savepath, "global_traj_v2.png")
     imageio.imsave(img_path, total_image)
