@@ -8,6 +8,8 @@ dependencies:
 - patchelf
 - pip:
     - -f https://download.pytorch.org/whl/torch_stable.html
+    - setuptools==65.5.0 pip==21
+    - wheel==0.38.0
     - numpy
     - gym==0.18.0
     - mujoco-py==2.0.2.13
