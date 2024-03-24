@@ -40,7 +40,12 @@ def find_path(maze):
     # BFS algorithm to find the shortest path
     directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
     start = (1, 1)
-    end = (maze.shape[0]-2, maze.shape[1]-2)
+    end = (1, 1)
+    for i, row in enumerate(maze):
+        for j, column in enumerate(row):
+            if column == 12:
+                end = (i, j)
+    print(end)
     visited = np.zeros_like(maze, dtype=bool)
     visited[start] = True
     queue = Queue()
@@ -53,7 +58,7 @@ def find_path(maze):
                 return path + [next_node]
             if (next_node[0] >= 0 and next_node[1] >= 0 and 
                 next_node[0] < maze.shape[0] and next_node[1] < maze.shape[1] and 
-                maze[next_node] == 0 and not visited[next_node]):
+                maze[next_node] == 11 and not visited[next_node]):
                 visited[next_node] = True
                 queue.put((next_node, path + [next_node]))
 

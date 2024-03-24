@@ -282,6 +282,11 @@ plots.render_discretized_maze_layout(renderer_large, args.savepath)
 img = renderer_large.composite(
     join(args.savepath, "trajectory_wfillings.png"), traj_wfillings[None], ncol=1, #conditions=conditions
 )
+planner_traj = np.vstack(path_found) # should be (timesteps x 2)
+planner_traj = [planner_traj] # might be necessary
+img = renderer_large.composite(
+    join(args.savepath, "trajectory_planner.png"), planner_traj[None], ncol=1, conditions=conditions
+)
 
 # print(f"conditions: {conditions}")
 img = renderer_large.composite(
