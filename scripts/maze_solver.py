@@ -45,7 +45,9 @@ def find_path(maze):
         for j, column in enumerate(row):
             if column == 12:
                 end = (i, j)
+    
     print(f'find_path start: {start}, end: {end}')
+    
     visited = np.zeros_like(maze, dtype=bool)
     visited[start] = True
     queue = Queue()

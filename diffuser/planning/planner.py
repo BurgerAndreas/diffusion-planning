@@ -48,6 +48,15 @@ def plan_waypoints(large_maze, global_start, global_goal, small_maze_size, overl
     waypoints.pop()
     # print("WAYPOINTS:")
     # print(waypoints)
+
+    # add outer wall back to the waypoints
+    if large_maze_outer_wall is True:
+        waypoints = [[waypoint[0] + 1, waypoint[1] + 1] for waypoint in waypoints]
+        # global_start = np.array(global_start) + np.array([1, 1])
+        # global_goal = np.array(global_goal) + np.array([1, 1])
+        # add wall back to the path
+        # path = [(square[0] + 1, square[1] + 1) for square in path]
+
     return waypoints, path
 
 def find_quadrant(maze_height, maze_width, square):

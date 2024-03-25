@@ -94,6 +94,7 @@ large_env = maps.maze_to_gym_env(large_maze)
 large_env.env_name = 'maze2d-custom-v1'
 
 renderer_large = utils.Maze2dRenderer(large_env)
+renderer_large._remove_margins = argsdp._remove_margins
 renderer_large._bounds = [0, large_maze_size[0], 0, large_maze_size[1]]
 renderer_large.env_name = 'maze2d-custom-v1'
 
