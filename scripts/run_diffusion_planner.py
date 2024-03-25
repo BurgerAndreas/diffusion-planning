@@ -115,8 +115,11 @@ waypoints, path_planner = plan.plan_waypoints(
     large_maze, argsdp.global_start, argsdp.global_goal, small_maze_size, overlap=argsdp.overlap, large_maze_outer_wall=argsdp.large_maze_outer_wall
 )
 
+# add start and goal
 if not np.allclose(argsdp.global_start, waypoints[0]):
-    waypoints.insert(0, argsdp.global_start)
+    waypoints = [argsdp.global_start] + waypoints
+if not np.allclose(argsdp.global_goal, waypoints[-1]):
+    waypoints = waypoints + [argsdp.global_goal]
 
 conditions = [np.vstack(copy.deepcopy(waypoints))]
 

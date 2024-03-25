@@ -4,7 +4,9 @@ import math
 from scripts.maze_solver import find_path
 
 def plan_waypoints(large_maze, global_start, global_goal, small_maze_size, overlap=None, large_maze_outer_wall=False):
-    """Plan a trajectory from start to goal, and return waypoints."""
+    """Plan a trajectory from start to goal, and return waypoints.
+    We work in a coordinate frame where the outer wall is removed.
+    """
     
     # remove the outer wall of the maze
     if large_maze_outer_wall is True:
@@ -33,8 +35,8 @@ def plan_waypoints(large_maze, global_start, global_goal, small_maze_size, overl
     MAZE_HEIGHT = small_maze_size[0]
     MAZE_WIDTH = small_maze_size[1]
     if overlap is not None:
-        MAZE_HEIGHT = int(MAZE_HEIGHT - overlap[0])
-        MAZE_WIDTH = int(MAZE_WIDTH - overlap[1])
+        MAZE_HEIGHT = int(MAZE_HEIGHT - (overlap[0] * 2))
+        MAZE_WIDTH = int(MAZE_WIDTH - (overlap[1] * 2))
 
     last_quadrant = (0, 0)
     waypoints = []
