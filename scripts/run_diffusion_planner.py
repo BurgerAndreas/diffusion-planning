@@ -27,6 +27,7 @@ import diffuser.utils as utils
 import diffuser.planning.planner as plan
 import diffuser.planning.largemaze2d as maps
 import diffuser.planning.diffusing as dm
+import diffuser.planning.plotting as plots
 
 
 @contextmanager
@@ -73,7 +74,8 @@ with suppress_stdout():
 
 
 # ---------------------------------- generate maze ----------------------------------#
-    
+print('\n' + ('-' * 20), 'Generating the maze', '-' * 20)
+
 # Construct a larger maze by concatenating multiple smaller mazes
 small_maze = datasets.load_environment(args.dataset)
 maze_layout = small_maze.maze_arr
@@ -84,23 +86,49 @@ large_maze = maps.generate_large_maze(
     maze_layout=maze_layout, n_maze_h=argsdp.n_maze_h, n_maze_w=argsdp.n_maze_w, overlap=argsdp.overlap, 
     large_maze_outer_wall=argsdp.large_maze_outer_wall
 )
-print(f'large maze (size {large_maze.shape})\n', large_maze)
+large_maze_size = large_maze.shape
+print(f'large maze (size {large_maze_size})\n', large_maze)
+
+# large maze env for better rendering
+large_env = maps.maze_to_gym_env(large_maze)
+large_env.env_name = 'maze2d-custom-v1'
+
+renderer_large = utils.Maze2dRenderer(large_env)
+renderer_large._bounds = [0, large_maze_size[0], 0, large_maze_size[1]]
+renderer_large.env_name = 'maze2d-custom-v1'
+
+# render the maze layout without any trajectory
+# maze_img = plots.render_maze_layout(renderer_large, args.savepath)
+
+# render the discretized maze layout
+plots.render_discretized_maze_layout(renderer_large, args.savepath)
+
 
 # ---------------------------------- main loop planner ----------------------------------#
 print('\n' + ('-' * 20), 'Planning the waypoints', '-' * 20)
 
-# TODO(Yifan, Jack)
+# Yifan
 # - Get the planner to output a trajectory in the larger maze
 # - Sample waypoints on the planner trajectory and use them as start and goal locations for the diffuser
-waypoints = plan.plan_waypoints(large_maze, argsdp.global_start, argsdp.global_goal)
-if waypoints is None:
-    waypoints = argsdp.waypoints
-    waypoints['global_start'] = argsdp.global_start
-    waypoints['global_goal'] = argsdp.global_goal
+waypoints, path_planner = plan.plan_waypoints(
+    large_maze, argsdp.global_start, argsdp.global_goal, small_maze_size, overlap=argsdp.overlap, large_maze_outer_wall=argsdp.large_maze_outer_wall
+)
 
-waypoints = [v for k, v in waypoints.items()]
-print(f"waypoints: {waypoints}")
+if not np.allclose(argsdp.global_start, waypoints[0]):
+    waypoints.insert(0, argsdp.global_start)
 
+conditions = [np.vstack(copy.deepcopy(waypoints))]
+
+print(f'Start: {argsdp.global_start} | Goal: {argsdp.global_goal}')
+print(f"Waypoints: {waypoints}")
+
+# plot the trajectory found by the planner
+planner_traj = np.vstack(path_planner) # should be (timesteps x 2)
+planner_traj = [planner_traj] # might be necessary
+img = renderer_large.composite(
+    join(args.savepath, "trajectory_planner.png"), planner_traj, ncol=1, conditions=conditions
+    # join(args.savepath, "trajectory_planner.png"), planner_traj[None], ncol=1, conditions=conditions
+)
 print(f'\nFinished planning!')
 
 # ---------------------------------- main loop diffusion ----------------------------------#
@@ -115,11 +143,10 @@ print('\n' + ('-' * 20), 'Diffusing the trajectories', '-' * 20)
 # Idea 2: Instead we could let the mazes overlap a bit, 
 # so that a waypoint just inside the outer walls are actually at the boundary to the next maze
 
-conditions = [np.vstack(copy.deepcopy(waypoints))]
 if argsdp.overlapping_waypoint_pairs == True:
     num_steps = len(waypoints) - 1
 else:
-    assert len(waypoints) % 2 == 0
+    assert len(waypoints) % 2 == 0, f"Number of waypoints should be even, but is {len(waypoints)}"
     num_steps = round(len(waypoints) / 2)
 
 
@@ -148,7 +175,7 @@ for step in range(num_steps):
     # check if start and goal are in the same maze
     coord_start = maps.get_maze_coord_from_global_pos(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
     coord_goal = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-    assert np.allclose(coord_start, coord_goal), f"start and goal should be in the same maze, but are {coord_start} and {coord_goal}"
+    assert np.allclose(coord_start, coord_goal), f"start {local_start_gc} and goal {local_goal_gc} should be in the same maze, but are {coord_start} and {coord_goal}"
 
     # generate a trajectory in the local maze
     rollout, rendering = dm.diffuse_trajectory(local_start, local_goal, small_maze, diffusion, policy, renderer, args, argsdp)
@@ -256,7 +283,6 @@ for step in range(len(traj_pieces_gc) - 1):
 print(f"\nFinished diffusing the trajectory gaps!")
 
 # ---------------------------------- plotting ----------------------------------#
-import diffuser.planning.plotting as plots
 
 print(f'\nRendering the trajectory with fillings.')
 
@@ -264,33 +290,14 @@ traj_wfillings = np.vstack(traj_w_filled)
 print(f"Trajectory with gaps filled in: {traj_wfillings.shape}")
 print(f'  start: {traj_wfillings[0]} | goal: {traj_wfillings[-1]}')
 
-# large maze env for better rendering
-large_maze_size = large_maze.shape
-large_env = maps.maze_to_gym_env(large_maze)
-large_env.env_name = 'maze2d-custom-v1'
-
-renderer_large = utils.Maze2dRenderer(large_env)
-renderer_large._bounds = [0, large_maze_size[0], 0, large_maze_size[1]]
-renderer_large.env_name = 'maze2d-custom-v1'
-
-# render the maze layout without any trajectory
-# maze_img = plots.render_maze_layout(renderer_large, args.savepath)
-
-# render the discretized maze layout
-plots.render_discretized_maze_layout(renderer_large, args.savepath)
-
-img = renderer_large.composite(
-    join(args.savepath, "trajectory_wfillings.png"), traj_wfillings[None], ncol=1, #conditions=conditions
-)
-planner_traj = np.vstack(path_found) # should be (timesteps x 2)
-planner_traj = [planner_traj] # might be necessary
-img = renderer_large.composite(
-    join(args.savepath, "trajectory_planner.png"), planner_traj[None], ncol=1, conditions=conditions
-)
-
-# print(f"conditions: {conditions}")
+# plot final trajectory
+# with waypoints
 img = renderer_large.composite(
     join(args.savepath, "trajectory_wfillings_waypoints.png"), traj_wfillings[None], ncol=1, conditions=conditions
+)
+# without waypoints
+img = renderer_large.composite(
+    join(args.savepath, "trajectory_wfillings.png"), traj_wfillings[None], ncol=1, #conditions=conditions
 )
 
 # plots.render_traj(traj_renderings, args.savepath, empty_img=maze_img, remove_overlap=argsdp.remove_img_margins, add_outer_walls=argsdp.large_maze_outer_wall)
