@@ -70,11 +70,12 @@ with suppress_stdout():
     dataset = diffusion_experiment.dataset
     renderer = diffusion_experiment.renderer
     renderer._remove_margins = argsdp._remove_margins
+    # renderer.size_inches = (renderer.size_inches[0] * argsdp.n_maze_h, renderer.size_inches[1]  * argsdp.n_maze_w)
 
     policy = Policy(diffusion, dataset.normalizer)
 
 
-argsdp.global_start = np.array([1.5, 2.5])
+# argsdp.global_start = np.array([1.5, 2.5])
 # argsdp.global_goal = np.array([10.5, 10.5])
 
 # argsdp.n_maze_h = 3
@@ -87,21 +88,32 @@ argsdp.n_maze_w = 3
 argsdp.global_start = np.array([1.5, 2.5])
 argsdp.global_goal = np.array([19.5, 28.5], dtype=float)
 
+argsdp.n_maze_h = 7
+argsdp.n_maze_w = 7
+argsdp.global_start = 'middle_right'
+argsdp.global_goal = 'middle_left'
+
 # buggy
 # argsdp.n_maze_h = 10
 # argsdp.n_maze_w = 10
 # argsdp.global_start = np.array([1.5, 2.5])
 # argsdp.global_goal = np.array([69.5, 99.5], dtype=float)
 
-argsdp.n_maze_h = 5
-argsdp.n_maze_w = 5
-argsdp.global_start = np.array([1.5, 2.5])
-argsdp.global_goal = np.array([34.5, 50.5], dtype=float)
+# works top left to bottom right
+# argsdp.n_maze_h = 5
+# argsdp.n_maze_w = 5
+# argsdp.global_start = np.array([1.5, 2.5])
+# argsdp.global_goal = np.array([34.5, 50.5], dtype=float)
 
-argsdp.n_maze_h = 5
-argsdp.n_maze_w = 5
-argsdp.global_start = np.array([10.5, 45.5])
-argsdp.global_goal = np.array([30.5, 2.5], dtype=float)
+# argsdp.n_maze_h = 5
+# argsdp.n_maze_w = 5
+# argsdp.global_start = np.array([10.5, 45.5])
+# argsdp.global_goal = np.array([30.5, 2.5], dtype=float)
+
+# argsdp.n_maze_h = 5
+# argsdp.n_maze_w = 5
+# argsdp.global_start = 'bottom_left'
+# argsdp.global_goal = 'top_right'
 
 # buggy
 # argsdp.n_maze_h = 3
@@ -115,8 +127,14 @@ argsdp.global_goal = np.array([30.5, 2.5], dtype=float)
 # argsdp.global_start = np.array([3.5, 1.5])
 # argsdp.global_goal = np.array([18.5, 30.5], dtype=float)
 
-add_noise_pos = False
-add_noise_velocity = True
+argsdp.add_noise_pos = False
+argsdp.add_noise_velocity = True
+
+argsdp.plan_only = True
+
+# argsdp.plan_only = False
+# argsdp.replan_every_step = 100
+
 
 # ---------------------------------- generate maze ----------------------------------#
 print('\n' + ('-' * 20), 'Generating the maze', '-' * 20)
@@ -125,14 +143,17 @@ print('\n' + ('-' * 20), 'Generating the maze', '-' * 20)
 small_maze = datasets.load_environment(args.dataset)
 maze_layout = small_maze.maze_arr
 small_maze_size = maze_layout.shape
-print(f'small maze (size {small_maze_size})\n', maze_layout)
+print(f'small maze: {small_maze_size}')
+# print(maze_layout)
 
 large_maze = maps.generate_large_maze(
     maze_layout=maze_layout, n_maze_h=argsdp.n_maze_h, n_maze_w=argsdp.n_maze_w, overlap=argsdp.overlap, 
     large_maze_outer_wall=argsdp.large_maze_outer_wall
 )
 large_maze_size = large_maze.shape
-print(f'large maze (size {large_maze_size})\n', large_maze)
+argsdp.global_start, argsdp.global_goal = maps.get_start_goal(argsdp.global_start, argsdp.global_goal, large_maze_size)
+print(f'large maze: size {large_maze_size}')
+# print(large_maze)
 
 # large maze env for better rendering
 large_env = maps.maze_to_gym_env(large_maze)
@@ -142,6 +163,7 @@ renderer_large = utils.Maze2dRenderer(large_env)
 renderer_large._remove_margins = argsdp._remove_margins
 renderer_large._bounds = [0, large_maze_size[0], 0, large_maze_size[1]]
 renderer_large.env_name = 'maze2d-custom-v1'
+renderer_large.size_inches = (renderer_large.size_inches[0] * argsdp.n_maze_h, renderer_large.size_inches[1]  * argsdp.n_maze_w)
 
 # render the maze layout without any trajectory
 # maze_img = plots.render_maze_layout(renderer_large, args.savepath)
@@ -166,6 +188,7 @@ if not np.allclose(argsdp.global_start, waypoints[0]):
 if not np.allclose(argsdp.global_goal, waypoints[-1]):
     waypoints = waypoints + [argsdp.global_goal]
 
+conditions = [np.vstack(copy.deepcopy(waypoints))]
 
 print(f'Start: {argsdp.global_start} | Goal: {argsdp.global_goal}')
 print(f"Waypoints: {waypoints}")
@@ -174,8 +197,8 @@ print(f"Waypoints: {waypoints}")
 planner_traj = np.vstack(path_planner) # should be (timesteps x 2)
 planner_traj = [planner_traj] # might be necessary
 img = renderer_large.composite(
-    join(args.savepath, "trajectory_planner.png"), planner_traj, ncol=1, conditions=[np.vstack(copy.deepcopy(waypoints))]
-    # join(args.savepath, "trajectory_planner.png"), planner_traj[None], ncol=1, conditions=[np.vstack(copy.deepcopy(waypoints))]
+    join(args.savepath, "trajectory_planner.png"), copy.deepcopy(planner_traj), ncol=1, conditions=copy.deepcopy(conditions)
+    # join(args.savepath, "trajectory_planner.png"), planner_traj[None], ncol=1, conditions=copy.deepcopy(conditions)
 )
 print(f'\nFinished planning!')
 
@@ -197,51 +220,68 @@ else:
     assert len(waypoints) % 2 == 0, f"Number of waypoints should be even, but is {len(waypoints)}"
     num_steps = round(len(waypoints) / 2)
 
+# TODO optionally add more squares from the planner as conditioning
 
 traj_pieces = []
 traj_renderings = []
+traj_pieces_gc = []
 for step in range(num_steps):
 
     print(f"\nDiffusing local traj {step + 1} of {num_steps}")
 
-    if argsdp.overlapping_waypoint_pairs == True:
-        local_start_idx, local_goal_idx = step, step + 1
-    else:
-        idx = 2 * step
-        if idx >= len(waypoints):
+    for attempt in range(argsdp.max_tries):
+        if argsdp.overlapping_waypoint_pairs == True:
+            local_start_idx, local_goal_idx = step, step + 1
+        else:
+            idx = 2 * step
+            if idx >= len(waypoints):
+                break
+            local_start_idx, local_goal_idx = idx, idx + 1
+        local_start_gc = copy.deepcopy(waypoints[local_start_idx])
+        local_goal_gc = copy.deepcopy(waypoints[local_goal_idx])
+
+        # convert global coordinates to local coordinates
+        local_start = maps.global_to_local(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+        local_goal = maps.global_to_local(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+        if attempt == 0:
+            print(f" start: {local_start_gc} | goal: {local_goal_gc} (global coords)")
+            print(f"        {local_start} |       {local_goal} (local coords)")
+        else:
+            print(f" retrying...")
+
+        # check if start and goal are in the same maze
+        coord_start = maps.get_maze_coord_from_global_pos(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+        coord_goal = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+        assert np.allclose(coord_start, coord_goal), f"start {local_start_gc} and goal {local_goal_gc} should be in the same maze, but are {coord_start} and {coord_goal}"
+
+        # test that the reverse transform works
+        # TODO we add 1 too much
+        _local_start_gc = maps.local_to_global(local_start, coord_start, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+        _local_goal_gc = maps.local_to_global(local_goal, coord_goal, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+        assert np.allclose(local_start_gc, _local_start_gc), f"local_start_gc: {local_start_gc} | _local_start_gc: {_local_start_gc}"
+        assert np.allclose(local_goal_gc, _local_goal_gc), f"local_goal_gc: {local_goal_gc} | _local_goal_gc: {_local_goal_gc}"
+
+        # generate a trajectory in the local maze
+        rollout, rendering = dm.diffuse_trajectory(
+            local_start, local_goal, small_maze, diffusion, policy, renderer, args, argsdp
+        )
+        distance_from_goal = np.linalg.norm(rollout[-1][:2] - local_goal)  
+        print(f' distance from goal: {distance_from_goal:.2f} ({rollout[-1][:2]})')
+
+        if distance_from_goal < argsdp.goal_threshold:
             break
-        local_start_idx, local_goal_idx = idx, idx + 1
-    local_start_gc = copy.deepcopy(waypoints[local_start_idx])
-    local_goal_gc = copy.deepcopy(waypoints[local_goal_idx])
-
-    # convert global coordinates to local coordinates
-    local_start = maps.global_to_local(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-    local_goal = maps.global_to_local(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-    print(f" start: {local_start_gc} | goal: {local_goal_gc} (global coords)")
-    print(f"        {local_start} |       {local_goal} (local coords)")
-
-    # check if start and goal are in the same maze
-    coord_start = maps.get_maze_coord_from_global_pos(local_start_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-    coord_goal = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
-    assert np.allclose(coord_start, coord_goal), f"start {local_start_gc} and goal {local_goal_gc} should be in the same maze, but are {coord_start} and {coord_goal}"
-
-    # generate a trajectory in the local maze
-    rollout, rendering = dm.diffuse_trajectory(
-        local_start, local_goal, small_maze, diffusion, policy, renderer, args, argsdp, 
-        add_noise_velocity=add_noise_velocity, add_noise_pos=add_noise_pos,
-    )
+        else:
+            print(f" Failed to reach goal.")
 
     # rollout: [time, obs_dim]
-    _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+    # _coords = maps.get_maze_coord_from_global_pos(local_goal_gc, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
+    _coords = copy.deepcopy(coord_goal)
     traj_pieces.append((np.array(rollout), _coords))
     traj_renderings.append((rendering, _coords))
     # local traj finished
 
-# convert trajectory so far to global coordinates
-print(f"\nFinished diffusing the trajectories!")
-print(f'Converting trajectory pieces to global coordinates.')
-traj_pieces_gc = []
-for _t, _c in traj_pieces:
+    # convert trajectory to global coordinates
+    _t, _c = copy.deepcopy(traj_pieces[-1])
     _t_c = []
     for _p in _t:
         _p_c = maps.local_to_global(_p, _c, small_maze_size, argsdp.overlap, argsdp.large_maze_outer_wall) 
@@ -252,6 +292,7 @@ for _t, _c in traj_pieces:
 traj = np.vstack(traj_pieces_gc)
 # print(f"Trajectory: {traj.shape}")
 
+print(f"\nFinished diffusing the trajectories!")
 
 # ---------------------------------- plotting ----------------------------------#
 import diffuser.planning.plotting as plots
@@ -306,6 +347,9 @@ for step in range(len(traj_pieces_gc) - 1):
     # transform to local coordinates
     local_traj1, local_traj2, ltog = maps.global_to_local_openmaze(traj1, traj2, open_maze_size)
 
+    assert np.allclose(local_traj1 + ltog, traj1), f"local_traj1: {local_traj1} | ltog: {ltog} | traj1: {traj1}"
+    assert np.allclose(local_traj2 + ltog, traj2), f"local_traj2: {local_traj2} | ltog: {ltog} | traj2: {traj2}"
+
     # set boundary conditions (optionally add more constraints)
     local_start = local_traj1[-1]
     local_goal = local_traj2[0]
@@ -314,15 +358,22 @@ for step in range(len(traj_pieces_gc) - 1):
     print(f'       {local_start} |       {local_goal} (local open coords)')
 
     # make sure gap fits within the open maze size
-    assert np.all(np.abs(traj1[-1] - traj2[0]) <  open_maze_size), f"traj1[-1]: {traj1[-1]} | traj2[0]: {traj2[0]} | open_maze_size: {open_maze_size}"
+    # assert np.all(np.abs(traj1[-1] - traj2[0]) <  open_maze_size), f"traj1[-1]: {traj1[-1]} | traj2[0]: {traj2[0]} | open_maze_size: {open_maze_size}"
+    if not np.all(np.abs(traj1[-1] - traj2[0]) <  open_maze_size): 
+        print(f"Gap too large, skipping...")
+        print(f"traj1[-1]: {traj1[-1]} | traj2[0]: {traj2[0]} | open_maze_size: {open_maze_size}")
+        traj_w_filled.append(traj1)
+        # traj_w_filled.append(rollout)
+        traj_w_filled.append(traj2)
+        continue
 
     # generate a trajectory in the local maze
     rollout, rendering = dm.diffuse_trajectory(
         local_start, local_goal, open_maze, diffusion_open, policy_open, renderer_open, args, argsdp, 
-        saveplots=False, add_noise_velocity=add_noise_velocity, add_noise_pos=add_noise_pos
+        saveplots=True,
     )
     
-    # # convert to global coordinates
+    # convert to global coordinates
     rollout = np.asarray(rollout)
     rollout = rollout[:, :2] 
     rollout += ltog
@@ -332,6 +383,7 @@ for step in range(len(traj_pieces_gc) - 1):
     traj_w_filled.append(traj1)
     traj_w_filled.append(rollout)
     traj_w_filled.append(traj2)
+    # print(f'traj1[-1] {traj1[-1]} | rollout[0] {rollout[0]}| rollout[-1] {rollout[-1]} | traj2[0] {traj2[0]}')
 
 print(f"\nFinished diffusing the trajectory gaps!")
 
@@ -346,11 +398,11 @@ print(f'  start: {traj_wfillings[0]} | goal: {traj_wfillings[-1]}')
 # plot final trajectory
 # with waypoints
 img = renderer_large.composite(
-    join(args.savepath, "trajectory_wfillings_waypoints.png"), traj_wfillings[None], ncol=1, conditions=[np.vstack(copy.deepcopy(waypoints))]
+    join(args.savepath, "trajectory_wfillings_waypoints.png"), traj_wfillings[None], ncol=1, conditions=copy.deepcopy(conditions)
 )
 # without waypoints
 img = renderer_large.composite(
-    join(args.savepath, "trajectory_wfillings.png"), traj_wfillings[None], ncol=1, #conditions=[np.vstack(copy.deepcopy(waypoints))]
+    join(args.savepath, "trajectory_wfillings.png"), traj_wfillings[None], ncol=1, #conditions=copy.deepcopy(conditions)
 )
 
 # plots.render_traj(traj_renderings, args.savepath, empty_img=maze_img, remove_overlap=argsdp.remove_img_margins, add_outer_walls=argsdp.large_maze_outer_wall)

@@ -128,6 +128,12 @@ base = {
         # "remove_img_margins": None,
         # "remove_img_margins": [int(500/9), int(500/12)], # slight border in between
         "remove_img_margins": [int(500/9)+1, int(500/12)+1],
+        "max_tries": 5,
+        "goal_threshold": 2.0,
+        "add_noise_pos": True,
+        "add_noise_velocity": True,
+        "plan_only": False,
+        "replan_every_step": 1000,
     }
 }
 

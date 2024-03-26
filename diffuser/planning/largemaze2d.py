@@ -8,6 +8,7 @@ from typing import Tuple, List, Dict, Any, Union, Optional, Sequence, Iterable
 
 from contextlib import contextmanager
 import sys, os
+import copy
 
 @contextmanager
 def suppress_stdout():
@@ -120,7 +121,7 @@ def maze_to_gym_env(maze):
     # )
     return env
 
-def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=False):
+def global_to_local(_global_pos, _maze_size, overlap, large_maze_outer_wall):
     """Convert global position (large maze) to local position (small maze).
 
     Args:
@@ -132,8 +133,8 @@ def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=F
         if x > 7 ->
     """
     # fix input types
-    global_pos = np.array(global_pos, dtype=float)
-    maze_size = np.array(maze_size, dtype=float)
+    global_pos = np.array(_global_pos, dtype=float)
+    maze_size = np.array(_maze_size, dtype=float)
     if overlap is not None:
         if np.allclose(overlap, np.array([0, 0])):
             overlap = None
@@ -155,7 +156,7 @@ def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=F
         local_pos[0] = global_pos[0] % maze_size[0]
         local_pos[1] = global_pos[1] % maze_size[1]
 
-    # add back overlap to the global position
+    # add back overlap
     if overlap is not None:
         # which small maze is the global position in?
         # small_maze_wo_walls = maze_size - (overlap * 2)
@@ -176,7 +177,7 @@ def global_to_local(global_pos, maze_size, overlap=None, large_maze_outer_wall=F
         f'local_pos: {local_pos} (from global_pos: {global_pos}) and maze_size: {maze_size} and overlap: {overlap}'
     return local_pos
 
-def local_to_global(local_pos, maze_coord, maze_size, overlap=None, large_maze_outer_wall=False):
+def local_to_global(_local_pos, maze_coord, _maze_size, overlap, large_maze_outer_wall):
     """Convert local position (small maze) to global position (large maze).
     Reverse of `global_to_local`.
 
@@ -186,8 +187,8 @@ def local_to_global(local_pos, maze_coord, maze_size, overlap=None, large_maze_o
         large_maze_outer_wall: if True, an outer wall was added to the large maze after removing the overlap
     """
     # fix input types
-    local_pos = np.array(local_pos, dtype=float)
-    maze_size = np.array(maze_size, dtype=float)
+    local_pos = np.array(_local_pos, dtype=float)
+    maze_size = np.array(_maze_size, dtype=float)
     if overlap is not None:
         if np.allclose(overlap, np.array([0, 0])):
             overlap = None
@@ -216,7 +217,6 @@ def local_to_global(local_pos, maze_coord, maze_size, overlap=None, large_maze_o
 
     return global_pos
 
-# TODO(Andreas): test this
 def global_to_local_openmaze(global_traj1, global_traj2, open_maze_size):
     """Convert global positions (large maze) to local positions (small maze).
     Takes in pieces of trajectories.
@@ -272,9 +272,10 @@ def global_to_local_openmaze(global_traj1, global_traj2, open_maze_size):
 
 
 
-def get_maze_coord_from_global_pos(global_pos, maze_size, overlap=None, large_maze_outer_wall=False):
+def get_maze_coord_from_global_pos(_global_pos, maze_size, overlap, large_maze_outer_wall):
     """Which small maze is the global position in?"""
     # remove the outer wall that was added to the large maze
+    global_pos = copy.deepcopy(_global_pos)
     if large_maze_outer_wall is True:
         global_pos[0] -= 1
         global_pos[1] -= 1
@@ -289,6 +290,32 @@ def get_maze_coord_from_global_pos(global_pos, maze_size, overlap=None, large_ma
         ], dtype=int)
     return maze_coord
 
+
+
+def get_start_goal(global_start, global_goal, large_maze_size):
+    top = 1.5
+    bottom = large_maze_size[0] - 1.5
+    middle = large_maze_size[0] / 2
+    left = 1.5
+    right = large_maze_size[1] - 1.5
+    
+    if type(global_start) is str:
+        global_start = np.array([
+            eval(global_start.split('_')[0]),
+            eval(global_start.split('_')[1]),
+        ])
+    else:
+        global_start = np.array(global_start)
+
+    if type(global_goal) is str:
+        global_goal = np.array([
+            eval(global_goal.split('_')[0]),
+            eval(global_goal.split('_')[1]),
+        ])
+    else:
+        global_goal = np.array(global_goal)
+    
+    return global_start, global_goal
 
 if __name__ == "__main__":
     import diffuser.datasets as datasets
@@ -372,4 +399,3 @@ if __name__ == "__main__":
     #     entry_point=d4rl.pointmaze.maze_model.MazeEnv,
     #     max_episode_steps=300,
     # )
-

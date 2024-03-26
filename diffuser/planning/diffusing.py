@@ -11,6 +11,8 @@ import diffuser.utils as utils
 import diffuser.planning.planner as plan
 import diffuser.planning.largemaze2d as maps
 
+import copy
+
 import d4rl
 
 """
@@ -18,7 +20,7 @@ based on main loop from diffuser/scripts/run_maze2d.py
 """
 
 # env = d4rl.pointmaze.maze_model.MazeEnv(maze_spec=maze_spec)
-def reset_to_location(maze: d4rl.pointmaze.maze_model.MazeEnv, location, add_noise_velocity=False, add_noise_pos=True):
+def reset_to_location(maze: d4rl.pointmaze.maze_model.MazeEnv, location, add_noise_velocity=True, add_noise_pos=True):
     maze.sim.reset()
     # location
     reset_location = np.array(location).astype(maze.observation_space.dtype)
@@ -33,13 +35,12 @@ def reset_to_location(maze: d4rl.pointmaze.maze_model.MazeEnv, location, add_noi
         qvel = np.zeros(maze.model.nv)
     else:
         qvel = np.array(add_noise_velocity).astype(maze.observation_space.dtype)
-    print(f" Setting qpos: {qpos} | qvel: {qvel}")
+    # print(f" Setting qpos: {qpos} | qvel: {qvel}")
     maze.set_state(qpos, qvel)
     return maze._get_obs(), maze
 
 def diffuse_trajectory(
-        start, goal, maze, diffusion, policy, renderer, args, argsdp, saveplots=True, 
-        add_noise_velocity=False, add_noise_pos=True
+        start, goal, maze, diffusion, policy, renderer, args, argsdp, saveplots=True
     ):
     # initial observation includes small non-zero velocity
     # observation = maze.reset()
@@ -54,7 +55,7 @@ def diffuse_trajectory(
     # but we need the maze for rendering, reward, and terminal checks
     # observation = maze.reset_to_location(start)
     observation, maze = reset_to_location(
-        maze, start, add_noise_velocity=add_noise_velocity, add_noise_pos=add_noise_pos
+        maze, start, add_noise_velocity=argsdp.add_noise_velocity, add_noise_pos=argsdp.add_noise_pos
     )
     maze.set_target(target_location=goal)
     
@@ -72,13 +73,14 @@ def diffuse_trajectory(
     rollout = [observation.copy()]
 
     total_reward = 0
-    for t in range(maze.max_episode_steps):
+    max_steps = min(maze.max_episode_steps, diffusion.horizon)
+    for t in range(max_steps):
 
         state = maze.state_vector().copy()
         # print(f"t: {t} | state: {state}")
 
-        ## can replan if desired, but the open-loop plans are good enough for maze2d
-        ## that we really only need to plan once
+        # can replan if desired, but the open-loop plans are good enough for maze2d
+        # that we really only need to plan once
         if t == 0:
             # set the starting point to be the initial obs (inpainting)
             cond[0] = observation
@@ -89,7 +91,17 @@ def diffuse_trajectory(
             sequence = samples.observations[0]
             # print(f"t: {t} | action: {state}")
 
-        # pdb.set_trace()
+        elif t % argsdp.replan_every_step == 0:
+            # replan
+            # add rollout so far to the conditioning
+            cond_extra = {k: v for k, v in enumerate(rollout)}
+            cond_extra[diffusion.horizon - 1] = np.array([*target, 0, 0])
+            # print(f'cond: {cond}')
+            action, samples = policy(cond_extra, batch_size=args.batch_size)
+            actions = samples.actions[0]
+            sequence = samples.observations[0]
+
+        # TODO: replan if the observation is too far from the plan
 
         # ####
         if t < len(sequence) - 1:
@@ -143,8 +155,8 @@ def diffuse_trajectory(
             terminal = True
             print(f"Reached reward at step {t} | R: {total_reward:.2f} | score: {score:.4f}")
 
-        if (t % args.vis_freq == 0) or terminal or (t == maze.max_episode_steps - 1):
-            fullpath = join(args.savepath, f"{t}.png")
+        if (t % args.vis_freq == 0) or terminal or (t == max_steps - 1):
+            fullpath = join(args.savepath, f"t{t}.png")
 
             if argsdp.plot_conditioning:
                 # make conditions into an array with the same length as the number of samples
@@ -153,15 +165,25 @@ def diffuse_trajectory(
                 conditions = [None]
 
             if t == 0:
-                renderer.composite(fullpath, samples.observations, ncol=1, conditions=conditions, saveplots=saveplots)
+                # original plan at t=0
+                img = renderer.composite(
+                    fullpath, copy.deepcopy(samples.observations), ncol=1, 
+                    conditions=copy.deepcopy(conditions), saveplots=saveplots
+                )
+                if argsdp.plan_only == True:
+                    # do not try to execute the plan (and potentially fail)
+                    _rollout = samples.observations[0]
+                    # print(f'Plan only, returning samples.observations and img {_rollout.shape}')
+                    return _rollout, img
 
             # renderer.render_plan(join(args.savepath, f'{t}_plan.mp4'), samples.actions, samples.observations, state)
 
             ## save rollout thus far
             img = renderer.composite(
-                join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1, conditions=conditions, saveplots=saveplots
+                join(args.savepath, "rollout.png"), np.array(rollout)[None], ncol=1, 
+                conditions=copy.deepcopy(conditions), saveplots=saveplots
             )
-            if terminal or (t == maze.max_episode_steps - 1):
+            if terminal or (t == max_steps - 1):
                 # _coords = maps.get_maze_coord_from_global_pos(goal_gc, maze_size, argsdp.overlap, argsdp.large_maze_outer_wall)
                 # traj_renderings.append((img, _coords))
                 # print(f'Appended img to global_traj_renderings (size {img.shape}, coords {_coords})')
@@ -176,7 +198,7 @@ def diffuse_trajectory(
 
         observation = next_observation
 
-    # logger.finish(t, env.max_episode_steps, score=score, value=0)
+    # logger.finish(t, max_steps, score=score, value=0)
 
     ## save result as a json file
     # json_path = join(args.savepath, "rollout.json")
