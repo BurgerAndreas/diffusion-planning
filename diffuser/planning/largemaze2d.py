@@ -239,25 +239,37 @@ def global_to_local_openmaze(global_traj1, global_traj2, open_maze_size):
         global_pos2 = global_traj2[0]
     else:
         global_pos2 = global_traj2
-    # find the midpoint (in global frame)
-    mid_g = (global_pos1 + global_pos2) / 2
+
+    # # find the midpoint (in global frame)
+    # # mid_g = (global_pos1 + global_pos2) / 2
     # mid_g = np.zeros_like(global_pos1) 
     # mid_g[0] = (global_pos1[0] + global_pos2[0]) / 2
     # mid_g[1] = (global_pos1[1] + global_pos2[1]) / 2
-    # enforce that the midpoint is in the center of the open maze
+    # # enforce that the midpoint is in the center of the open maze
+    # open_maze_center = np.asarray(open_maze_size) / 2
+    # gtol = open_maze_center - mid_g
+    # # convert global pos to local
+    # local_pos1 = global_pos1 + gtol
+    # local_pos2 = global_pos2 + gtol
+    # # print(f'global_pos1 = {global_pos1} | global_pos2 = {global_pos2}')
+    # # print(f'midpoint = {mid_g} | gtol = {gtol} | local_pos1 = {local_pos1} | local_pos2 = {local_pos2}')
+    # # convert whole trajectory to local
+    # local_traj1 = global_traj1 + gtol
+    # local_traj2 = global_traj2 + gtol
+    # # local to global: glob = local + ltog
+    # ltog = -gtol
+    # return local_traj1, local_traj2, ltog
+        
+    gap = global_pos2 - global_pos1
     open_maze_center = np.asarray(open_maze_size) / 2
-    gtol = open_maze_center - mid_g
-    # convert global pos to local
-    local_pos1 = global_pos1 + gtol
-    local_pos2 = global_pos2 + gtol
-    # print(f'global_pos1 = {global_pos1} | global_pos2 = {global_pos2}')
-    # print(f'midpoint = {mid_g} | gtol = {gtol} | local_pos1 = {local_pos1} | local_pos2 = {local_pos2}')
+    gtol = - global_pos1 + open_maze_center - gap / 2
     # convert whole trajectory to local
     local_traj1 = global_traj1 + gtol
     local_traj2 = global_traj2 + gtol
     # local to global: glob = local + ltog
     ltog = -gtol
     return local_traj1, local_traj2, ltog
+
 
 
 def get_maze_coord_from_global_pos(global_pos, maze_size, overlap=None, large_maze_outer_wall=False):

@@ -191,12 +191,6 @@ maze2d_large_v1_test1 = {
         # desired trajectory
         "global_start": np.array([1.5, 1.5], dtype=float),
         "global_goal": np.array([14.5, 18.5], dtype=float),
-        "waypoints": {
-            "global_start": np.array([1.5, 1.5], dtype=float),
-            "waypoint1": np.array([7.5, 10.5]), # just at the border if overlap=[1,1]
-            "waypoint2": np.array([8.5, 11.5]),
-            "global_goal": np.array([14.5, 20.5], dtype=float),
-        },
     },
 }
 
@@ -214,12 +208,6 @@ maze2d_large_v1_test2 = {
         # desired trajectory
         "global_start": np.array([.5, .5], dtype=float),
         "global_goal": np.array([17.5, 23.5], dtype=float),
-        "waypoints": {
-            "global_start": np.array([1.5, 1.5], dtype=float),
-            "waypoint1": np.array([8.5, 11.5]), # just at the border
-            "waypoint2": np.array([9.5, 12.5]),
-            "global_goal": np.array([14.5, 18.5], dtype=float),
-        },
     },
 }
 
@@ -239,12 +227,6 @@ maze2d_large_v1_test3 = {
         # desired trajectory
         "global_start": np.array([.5, .5], dtype=float),
         "global_goal": np.array([13.5, 19.5], dtype=float),
-        "waypoints": {
-            "global_start": np.array([1.5, 1.5], dtype=float),
-            "waypoint1": np.array([6.5, 9.5]), # just at the border
-            "waypoint2": np.array([7.5, 10.5]),
-            "global_goal": np.array([14.5, 18.5], dtype=float),
-        },
     },
 }
 
@@ -265,11 +247,5 @@ maze2d_large_v1_test3 = {
         # desired trajectory
         "global_start": np.array([.5, .5], dtype=float),
         "global_goal": np.array([13.5, 19.5], dtype=float),
-        "waypoints": {
-            "global_start": np.array([1.5, 1.5], dtype=float),
-            "waypoint1": np.array([6.5, 9.5]), # just at the border
-            "waypoint2": np.array([7.5, 10.5]),
-            "global_goal": np.array([14.5, 18.5], dtype=float),
-        },
     },
 }

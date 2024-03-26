@@ -333,11 +333,17 @@ class MazeRenderer:
         self._plot_obs = True
         self._plot_grid = False
         self._bounds = None
+        self.size_inches = (5, 5)
 
     def renders(self, observations, conditions=None, title=None):
         plt.clf()
         fig = plt.gcf()
-        fig.set_size_inches(5, 5)
+        # TODO: set size based on bounds
+        fig.set_size_inches(self.size_inches)
+        # if self._bounds is None:
+        #     fig.set_size_inches(self.size_inches)
+        # else:
+        #     fig.set_size_inches((self._bounds[1], self._bounds[0]))
         ax = plt.imshow(
             self._background * 0.5,
             extent=self._extent,
@@ -438,6 +444,7 @@ class Maze2dRenderer(MazeRenderer):
         self._plot_obs = True
         self._plot_grid = False
         self._bounds = None
+        self.size_inches = (5, 5)
 
     def renders(self, observations, conditions=None, **kwargs):
         if self._bounds is None:

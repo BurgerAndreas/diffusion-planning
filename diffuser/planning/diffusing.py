@@ -11,12 +11,36 @@ import diffuser.utils as utils
 import diffuser.planning.planner as plan
 import diffuser.planning.largemaze2d as maps
 
+import d4rl
+
 """
 based on main loop from diffuser/scripts/run_maze2d.py
 """
 
+# env = d4rl.pointmaze.maze_model.MazeEnv(maze_spec=maze_spec)
+def reset_to_location(maze: d4rl.pointmaze.maze_model.MazeEnv, location, add_noise_velocity=False, add_noise_pos=True):
+    maze.sim.reset()
+    # location
+    reset_location = np.array(location).astype(maze.observation_space.dtype)
+    if add_noise_pos == True: # default
+        qpos = reset_location + maze.np_random.uniform(low=-.1, high=.1, size=maze.model.nq)
+    else:
+        qpos = reset_location
+    # velocity
+    if add_noise_velocity == True: # default
+        qvel = maze.init_qvel + maze.np_random.randn(maze.model.nv) * .1
+    elif add_noise_velocity == False:
+        qvel = np.zeros(maze.model.nv)
+    else:
+        qvel = np.array(add_noise_velocity).astype(maze.observation_space.dtype)
+    print(f" Setting qpos: {qpos} | qvel: {qvel}")
+    maze.set_state(qpos, qvel)
+    return maze._get_obs(), maze
 
-def diffuse_trajectory(start, goal, maze, diffusion, policy, renderer, args, argsdp, saveplots=True):
+def diffuse_trajectory(
+        start, goal, maze, diffusion, policy, renderer, args, argsdp, saveplots=True, 
+        add_noise_velocity=False, add_noise_pos=True
+    ):
     # initial observation includes small non-zero velocity
     # observation = maze.reset()
 
@@ -28,10 +52,13 @@ def diffuse_trajectory(start, goal, maze, diffusion, policy, renderer, args, arg
     # Set the start and goal locations in the maze env
     # For the diffusion we only need to set the conditioning,
     # but we need the maze for rendering, reward, and terminal checks
-    observation = maze.reset_to_location(start)
+    # observation = maze.reset_to_location(start)
+    observation, maze = reset_to_location(
+        maze, start, add_noise_velocity=add_noise_velocity, add_noise_pos=add_noise_pos
+    )
     maze.set_target(target_location=goal)
     
-    # print(f"Initial observation: {observation}")
+    print(f" Initial observation: {observation}")
 
     ## set conditioning xy position to be the goal (inpainting)
     target = maze._target
