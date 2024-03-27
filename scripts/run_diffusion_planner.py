@@ -19,6 +19,7 @@ import imageio
 from contextlib import contextmanager
 import sys, os
 import copy
+import torch
 
 from diffuser.guides.policies import Policy
 import diffuser.datasets as datasets
@@ -47,7 +48,7 @@ class Parser(utils.Parser):
     config: str = "config.maze2d"
     # dataset: str = "maze2d-large-v1"
     # maze2d-umaze-v1 maze2d-medium-v1 maze2d-large-v1
-    dataset: str = "maze2d-large-v1-test1"
+    dataset: str = "maze2d-large-v1-2x2"
 
 
 with suppress_stdout():
@@ -74,6 +75,9 @@ with suppress_stdout():
 
     policy = Policy(diffusion, dataset.normalizer)
 
+    # set random seed
+    np.random.seed(argsdp.seed)
+    torch.manual_seed(argsdp.seed)
 
 # argsdp.global_start = np.array([1.5, 2.5])
 # argsdp.global_goal = np.array([10.5, 10.5])
@@ -83,15 +87,10 @@ with suppress_stdout():
 # argsdp.global_start = np.array([1.5, 2.5])
 # argsdp.global_goal = np.array([18.5, 20.5], dtype=float)
 
-argsdp.n_maze_h = 3
-argsdp.n_maze_w = 3
-argsdp.global_start = np.array([1.5, 2.5])
-argsdp.global_goal = np.array([19.5, 28.5], dtype=float)
-
-argsdp.n_maze_h = 7
-argsdp.n_maze_w = 7
-argsdp.global_start = 'middle_right'
-argsdp.global_goal = 'middle_left'
+# argsdp.n_maze_h = 10
+# argsdp.n_maze_w = 10
+# argsdp.global_start = 'top_right'
+# argsdp.global_goal = 'middle_left'
 
 # buggy
 # argsdp.n_maze_h = 10
@@ -127,17 +126,17 @@ argsdp.global_goal = 'middle_left'
 # argsdp.global_start = np.array([3.5, 1.5])
 # argsdp.global_goal = np.array([18.5, 30.5], dtype=float)
 
-argsdp.add_noise_pos = False
-argsdp.add_noise_velocity = True
+# argsdp.add_noise_pos = False
+# argsdp.add_noise_velocity = True
 
-argsdp.plan_only = True
+# argsdp.plan_only = True
 
 # argsdp.plan_only = False
 # argsdp.replan_every_step = 100
 
 
 # ---------------------------------- generate maze ----------------------------------#
-print('\n' + ('-' * 20), 'Generating the maze', '-' * 20)
+print('\n' + ('-' * 20), 'Generating the maze', '-' * 20, flush=True)
 
 # Construct a larger maze by concatenating multiple smaller mazes
 small_maze = datasets.load_environment(args.dataset)
@@ -394,6 +393,12 @@ print(f'\nRendering the trajectory with fillings.')
 traj_wfillings = np.vstack(traj_w_filled)
 print(f"Trajectory with gaps filled in: {traj_wfillings.shape}")
 print(f'  start: {traj_wfillings[0]} | goal: {traj_wfillings[-1]}')
+distance_from_goal = np.linalg.norm(traj_wfillings[-1] - argsdp.global_goal)
+print(f'Distance from goal: {distance_from_goal:.2f}')
+if distance_from_goal > argsdp.goal_threshold:
+    print(f"  Failed to reach global_goal.")
+else:
+    print(f"  Reached global_goal in {traj_wfillings.shape[0]} steps.")
 
 # plot final trajectory
 # with waypoints

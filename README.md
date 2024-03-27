@@ -52,6 +52,7 @@ sudo update-alternatives --config gcc # select whatever gcc version you had befo
 Our diffusion planner:
 ```bash
 python scripts/run_diffusion_planner.py
+# python scripts/run_diffusion_planner.py --config config.maze2d --dataset maze2d-large-v1-3x3
 ```
 
 
