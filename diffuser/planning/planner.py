@@ -8,7 +8,6 @@ def plan_waypoints(large_maze, global_start, global_goal, small_maze_size, overl
     We work in a coordinate frame where the outer wall is removed.
     The continuous maze is such that the first square is from (0, 0) to (1, 1),
     i.e. the middle of the square is at (0.5, 0.5).
-    The planner starts at (1,1)?
     """
     
     # remove the outer wall of the maze
@@ -21,6 +20,7 @@ def plan_waypoints(large_maze, global_start, global_goal, small_maze_size, overl
     large_maze = large_maze.copy()
     goal_x = math.ceil(global_goal[0])
     goal_y = math.ceil(global_goal[1])
+    # set the goal in the maze env (12 is the goal value in the maze)
     large_maze[goal_x][goal_y] = 12
     start_x = math.ceil(global_start[0])
     start_y = math.ceil(global_start[1])
