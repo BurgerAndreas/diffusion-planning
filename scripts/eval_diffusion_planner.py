@@ -20,8 +20,10 @@ from diffuser.planning.logging_utils import suppress_stdout
 
 from scripts.run_diffusion_planner import DiffusionPlanningMazeSolver, Parser, ParserOpen
 
-"""Run diffusion planner on a set of mazes and measure the success rate."""
-
+"""Run diffusion planner on a set of mazes and measure the success rate.
+If it throws an error somewhere (e.g. the paths are disconnected), it is unsuccessful. 
+If it makes it to the end goal, it is a success.
+"""
 
 
 def eval():

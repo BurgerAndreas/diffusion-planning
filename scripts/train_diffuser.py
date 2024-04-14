@@ -1,5 +1,7 @@
 import diffuser.utils as utils
 import pdb
+import glob
+import os
 
 
 # -----------------------------------------------------------------------------#
@@ -105,6 +107,19 @@ diffusion = diffusion_config(model)
 
 trainer = trainer_config(diffusion, dataset, renderer)
 
+# load pretrained model
+# search for state_<epoch>.pt files
+state_files = sorted(glob.glob(os.path.join(args.savepath, "state_*.pt")))
+print('', '-'*80, sep='\n')
+if state_files:
+    # epoch = int(state_files[-1].split("_")[-1].split(".")[0])
+    filepath = state_files[-1].split('state_')[0]
+    file_epochs = [int(f.split('state_')[-1].split('.pt')[0]) for f in state_files]
+    epoch = max(file_epochs)
+    print(f"Loading pretrained model at epoch {epoch} (in {filepath})")
+    trainer.load(epoch)
+else:
+    print(f"No pretrained model found in {args.savepath}.")
 
 # -----------------------------------------------------------------------------#
 # ------------------------ test forward & backward pass -----------------------#
@@ -132,5 +147,5 @@ for i in range(n_epochs):
 
 # training finished
 print(
-    f"[ utils/training ] Training finished at step {trainer.step} after time {int(timer.time_passed_since_init() / 60)} minutes."
+    f"[ scripts/train_diffuser ] Training finished at step {trainer.step} after time {int(timer.time_passed_since_init() / 60)} minutes."
 )
