@@ -26,6 +26,7 @@ wandb/
 !logs/maze2d-open-v0/diffusion/H128_T64/render_config.pkl
 !logs/maze2d-open-v0/diffusion/H128_T64/trainer_config.pkl
 !logs/maze2d-open-v0/diffusion/H128_T64/state_160000.pt
+!logs/maze2d-open-v0/diffusion/H128_T64/state_1240000.pt
 !logs/maze2d-open-v0/diffusion/H128_T64/state_1960000.pt
 
 # umaze checkpoint
